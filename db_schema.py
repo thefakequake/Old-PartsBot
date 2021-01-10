@@ -32,26 +32,6 @@ loop.run_until_complete(createbotdb())
 print('bot.db database created.')
 
 
-
-async def createbotdatadb():
-
-    conn = await aiosqlite.connect("botdata.db")
-
-    cursor = await conn.execute("""CREATE TABLE botstats (
-                    membercount text,
-                    servercount text
-                    )""")
-
-    await conn.commit()
-    await conn.close()
-
-
-loop = asyncio.get_event_loop()
-loop.run_until_complete(createbotdatadb())
-
-print('botstats.db database created.')
-
-
 credentials = open("credentials.json", "x")
 credentials.close()
 credentials = open("credentials.json", "w")

@@ -14,7 +14,6 @@ import aiosqlite
 
 with open("credentials.json") as file:
     data = json.load(file)
-    file.close()
 
 red = discord.Colour.from_rgb(0, 100, 0)
 error_colour = discord.Colour.from_rgb(254, 0, 0)

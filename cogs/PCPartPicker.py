@@ -12,67 +12,28 @@ import math
 import aiosqlite
 import random
 
-global rate_limited
-global allowed_ids
-
-try:
-    db = open("scrapedata.txt", "r")
-    text = db.read()
-    rate_limited = text
-except:
-    db = open("scrapedata.txt", "x")
-    db = open("scrapedata.txt", "w")
-    db.write("1")
-    rate_limited = "1"
-
-red = discord.Colour.from_rgb(0, 100, 0)
+green = discord.Colour.from_rgb(0, 100, 0)
 
 allowed_ids = [405798011172814868, 370611001948635157, 287256464047865857, 454186048721780751, 191280151084924928, 698634807143563424, 411274336847134730, 479319375149662209, 750353117698064497, 629736214345416734, 746775313593270352]
 
 def query(search_term):
     try:
-        session = requests.session()
-        page = session.get(f"https://pcpartpicker.com/search/?q={search_term}")
+        page = requests.get(f"https://pcpartpicker.com/search/?q={search_term}")
         soup = BeautifulSoup(page.content, 'html.parser')
-        for a in soup.find_all(class_='pageTitle'):
-            realtext = a.get_text()
-        if not realtext == 'Verification':
-            if realtext == 'Product Search':
-                text = soup.find_all(class_='search_results--link')
-                productnames = []
-                producturls = []
-                for a in text:
-                    text = a.get_text().replace('\n', '')
-                    text = text.replace('\\', '\n')
-                    productnames.append(text)
-                for a in soup.find_all('a', href=True):
-                    if (a['href'])[0:9] == '/product/':
-                        producturls.append(a['href'])
-                producturls = list(dict.fromkeys(producturls))
-                total = 0
-                for word in productnames:
-                    total += len(word)
-                for word in producturls:
-                    total += len(word)
-                if total > 1800:
-                    iterate = 10
-                    while total > 1800:
-                        total = 0
-                        iterate -= 1
-                        test = productnames[0:iterate]
-                        test2 = producturls[0:iterate]
-                        for word in test:
-                            total += len(word)
-                        for word2 in test2:
-                            total += len(word2)
-                    return productnames[0:iterate], producturls[0:iterate]
-                else:
-                    return productnames[0:10], producturls[0:10]
-            else: return 'use_current', realtext
-        else:
-            return 'rate_limited', 'rate_limited'
+        product_name = soup.find(class_='pageTitle').get_text()
+        if product_name != 'Product Search': # if the search query redirects straight to a product page
+            return 'use_current', product_name
+        productnames = []
+        producturls = []
+        for a in soup.find_all(class_='search_results--link'): # finds the names of the products
+            productnames.append(a.get_text().replace('\n', '').replace('\\', '\n'))
+        for a in soup.find_all(href=True): # finds the product links
+            if not a['href'].startswith('/product/') or a['href'] in producturls: # makes sure its a PCPP product URL and
+                continue                                                          # that it's not already in the list
+            producturls.append(a['href'])
+        return productnames[:10], producturls[:10]
     except IndexError:
-        return None, None
+        return None, None # no results
 
 
 
@@ -280,7 +241,7 @@ def format_link(url, message):
                 if len(thelist) > 1950:
                     thelist = thelist[0:1950]
             embed_msg = discord.Embed(title=f"PCPartPicker List", description=f"{thelist}\n\n**Estimated Wattage:** {wattage}\n**Total:** {prices[-1]}",
-                                      colour=red, url=url)
+                                      colour=green, url=url)
 
             pricinglist = ''
 
@@ -304,9 +265,9 @@ def format_link(url, message):
                     pricinglist = pricinglist[0:1950]
 
             embed_msg = discord.Embed(title=f"PCPartPicker List", description=f"{thelist}\n\n**Estimated Wattage:** {wattage}\n**Total:** {prices[-1]}",
-                                      colour=red, url=url)
+                                      colour=green, url=url)
 
-            pricing_breakdown_embed = discord.Embed(title="Pricing Breakdown", description=pricinglist, url=url, colour=red)
+            pricing_breakdown_embed = discord.Embed(title="Pricing Breakdown", description=pricinglist, url=url, colour=green)
 
             return embed_msg, thelist, pricing_breakdown_embed
         else:
@@ -318,7 +279,7 @@ def format_link(url, message):
 
 async def log(bot, command, ctx):
     logs = bot.get_channel(769906608318316594)
-    embed_msg = discord.Embed(title=f"Command '{command}' used by {str(ctx.message.author)}.", description=f"**Text:**\n{ctx.message.content}\n\n**User ID:**\n{ctx.author.id}\n\n**Full Details:**\n{str(ctx.message)}", colour=red, timestamp=datetime.utcnow())
+    embed_msg = discord.Embed(title=f"Command '{command}' used by {str(ctx.message.author)}.", description=f"**Text:**\n{ctx.message.content}\n\n**User ID:**\n{ctx.author.id}\n\n**Full Details:**\n{str(ctx.message)}", colour=green, timestamp=datetime.utcnow())
     await logs.send(embed=embed_msg)
 
 
@@ -497,119 +458,79 @@ class PCPartPicker(commands.Cog):
     @commands.cooldown(2, 60, commands.BucketType.member)
     async def partspecs(self, ctx, *, search_term):
         await log(self.bot, 'partspecs', ctx)
-        global rate_limited
-        if rate_limited == '1':
-            embed_msg = discord.Embed(title=f"Finding specs for '{search_term}' on PCPartPicker...",
-                                      timestamp=datetime.utcnow(), colour=red)
-            message = await ctx.send(embed=embed_msg)
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                productnames, producturls = await asyncio.get_event_loop().run_in_executor(pool, query, search_term)
-            if not productnames is None:
-                if not productnames == 'rate_limited':
-                    if not productnames == 'use_current':
-                        if not len(productnames) == 0:
-                            if not len(productnames) == 1:
-                                description = ''
-                                for i in range(0, len(productnames)):
-                                    if description == '':
-                                        description = f"{i + 1}. [{productnames[i]}]({'https://pcpartpicker.com' + producturls[i]})"
-                                    else:
-                                        description = f"{description}\n{i + 1}. [{productnames[i]}]({'https://pcpartpicker.com' + producturls[i]})"
-                                embed_msg = discord.Embed(title=f"Showing results for {search_term}:",
-                                                          description=description, colour=red,
-                                                          timestamp=datetime.utcnow())
-                                await message.edit(embed=embed_msg)
-                                one = "1\N{variation selector-16}\N{combining enclosing keycap}"
-                                two = "2\N{variation selector-16}\N{combining enclosing keycap}"
-                                three = "3\N{variation selector-16}\N{combining enclosing keycap}"
-                                four = "4\N{variation selector-16}\N{combining enclosing keycap}"
-                                five = "5\N{variation selector-16}\N{combining enclosing keycap}"
-                                six = "6\N{variation selector-16}\N{combining enclosing keycap}"
-                                seven = "7\N{variation selector-16}\N{combining enclosing keycap}"
-                                eight = "8\N{variation selector-16}\N{combining enclosing keycap}"
-                                nine = "9\N{variation selector-16}\N{combining enclosing keycap}"
-                                ten = "\N{keycap ten}"
-                                ex = "\u274C"
-                                reactions = []
-                                iterate = 0
-                                for r in (one, two, three, four, five, six, seven, eight, nine, ten):
-                                    iterate = iterate + 1
-                                    if not iterate > len(producturls):
-                                        await message.add_reaction(r)
-                                        reactions.append(r)
-                                await message.add_reaction(ex)
-                                reactions.append(ex)
-
-                                def check(reaction, user):
-                                    return user == ctx.message.author and str(reaction.emoji) in reactions
-
-                                reaction, user = await self.bot.wait_for('reaction_add', check=check)
-                                if str(reaction.emoji) == one:
-                                    item = 0
-                                if str(reaction.emoji) == two:
-                                    item = 1
-                                if str(reaction.emoji) == three:
-                                    item = 2
-                                if str(reaction.emoji) == four:
-                                    item = 3
-                                if str(reaction.emoji) == five:
-                                    item = 4
-                                if str(reaction.emoji) == six:
-                                    item = 5
-                                if str(reaction.emoji) == seven:
-                                    item = 6
-                                if str(reaction.emoji) == eight:
-                                    item = 7
-                                if str(reaction.emoji) == nine:
-                                    item = 8
-                                if str(reaction.emoji) == ten:
-                                    item = 9
-                                if str(reaction.emoji) == ex:
-                                    item = 10
-                            else:
-                                item = 0
-                            if not item == 10:
-                                with concurrent.futures.ThreadPoolExecutor() as pool:
-                                    titles, specs, images = await asyncio.get_event_loop().run_in_executor(pool, get_specs,
-                                                                                                   f"https://pcpartpicker.com{producturls[item]}",
-                                                                                                   'noncustom')
-                                description = ''
-                                if len(specs) > len(titles):
-                                    for i in range(0, len(titles)):
-                                        if description == '':
-                                            description = f'**{titles[i]}:**{specs[i]}'
-                                        else:
-                                            description = f'{description}\n**{titles[i]}:**{specs[i]}'
+        embed_msg = discord.Embed(title=f"Finding specs for '{search_term}' on PCPartPicker...", timestamp=datetime.utcnow(), colour=green)
+        message = await ctx.send(embed=embed_msg)
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            productnames, producturls = await asyncio.get_event_loop().run_in_executor(pool, query, search_term)
+        if not productnames is None:
+            if not productnames == 'rate_limited':
+                if not productnames == 'use_current':
+                    if not len(productnames) == 0:
+                        if not len(productnames) == 1:
+                            description = ''
+                            for i in range(0, len(productnames)):
+                                if description == '':
+                                    description = f"{i + 1}. [{productnames[i]}]({'https://pcpartpicker.com' + producturls[i]})"
                                 else:
-                                    for i in range(0, len(specs)):
-                                        if description == '':
-                                            description = f'**{titles[i]}:**{specs[i]}'
-                                        else:
-                                            description = f'{description}\n**{titles[i]}:**{specs[i]}'
-                                embed_msg = discord.Embed(title=productnames[item], description=description, colour=red,
-                                                          url=f"https://pcpartpicker.com{producturls[item]}",
-                                                          timestamp=datetime.utcnow())
-
-                                if len(images) > 0:
-                                    embed_msg.set_thumbnail(url=f"https:{images[0]}")
-
-                                await message.edit(embed=embed_msg)
-
-                            else:
-                                embed_msg = discord.Embed(title="Operation cancelled.", description="", colour=red,
-                                                          timestamp=datetime.utcnow())
-                                embed_msg.set_footer(text='Powered by PCPartPicker')
-                                await message.edit(embed=embed_msg)
-                        else:
-                            embed_msg = discord.Embed(title=f"No results found for '{search_term}'.", colour=red,
+                                    description = f"{description}\n{i + 1}. [{productnames[i]}]({'https://pcpartpicker.com' + producturls[i]})"
+                            embed_msg = discord.Embed(title=f"Showing results for {search_term}:",
+                                                      description=description, colour=green,
                                                       timestamp=datetime.utcnow())
                             await message.edit(embed=embed_msg)
-                    else:
-                        with concurrent.futures.ThreadPoolExecutor() as pool:
-                            titles, specs, images = await asyncio.get_event_loop().run_in_executor(pool, get_specs,
-                                                                                           f"https://pcpartpicker.com/search/?q={search_term}",
-                                                                                           'noncustom')
-                        if not str(titles) == 'rate_limited':
+                            one = "1\N{variation selector-16}\N{combining enclosing keycap}"
+                            two = "2\N{variation selector-16}\N{combining enclosing keycap}"
+                            three = "3\N{variation selector-16}\N{combining enclosing keycap}"
+                            four = "4\N{variation selector-16}\N{combining enclosing keycap}"
+                            five = "5\N{variation selector-16}\N{combining enclosing keycap}"
+                            six = "6\N{variation selector-16}\N{combining enclosing keycap}"
+                            seven = "7\N{variation selector-16}\N{combining enclosing keycap}"
+                            eight = "8\N{variation selector-16}\N{combining enclosing keycap}"
+                            nine = "9\N{variation selector-16}\N{combining enclosing keycap}"
+                            ten = "\N{keycap ten}"
+                            ex = "\u274C"
+                            reactions = []
+                            iterate = 0
+                            for r in (one, two, three, four, five, six, seven, eight, nine, ten):
+                                iterate = iterate + 1
+                                if not iterate > len(producturls):
+                                    await message.add_reaction(r)
+                                    reactions.append(r)
+                            await message.add_reaction(ex)
+                            reactions.append(ex)
+
+                            def check(reaction, user):
+                                return user == ctx.message.author and str(reaction.emoji) in reactions
+
+                            reaction, user = await self.bot.wait_for('reaction_add', check=check)
+                            if str(reaction.emoji) == one:
+                                item = 0
+                            if str(reaction.emoji) == two:
+                                item = 1
+                            if str(reaction.emoji) == three:
+                                item = 2
+                            if str(reaction.emoji) == four:
+                                item = 3
+                            if str(reaction.emoji) == five:
+                                item = 4
+                            if str(reaction.emoji) == six:
+                                item = 5
+                            if str(reaction.emoji) == seven:
+                                item = 6
+                            if str(reaction.emoji) == eight:
+                                item = 7
+                            if str(reaction.emoji) == nine:
+                                item = 8
+                            if str(reaction.emoji) == ten:
+                                item = 9
+                            if str(reaction.emoji) == ex:
+                                item = 10
+                        else:
+                            item = 0
+                        if not item == 10:
+                            with concurrent.futures.ThreadPoolExecutor() as pool:
+                                titles, specs, images = await asyncio.get_event_loop().run_in_executor(pool, get_specs,
+                                                                                               f"https://pcpartpicker.com{producturls[item]}",
+                                                                                               'noncustom')
                             description = ''
                             if len(specs) > len(titles):
                                 for i in range(0, len(titles)):
@@ -622,10 +543,9 @@ class PCPartPicker(commands.Cog):
                                     if description == '':
                                         description = f'**{titles[i]}:**{specs[i]}'
                                     else:
-                                        description = f'{description}\n**{titles[i]}:** {specs[i]}'
-                            embed_msg = discord.Embed(title=producturls, description=description, colour=red,
-                                                      url=(f"https://pcpartpicker.com/search/?q={search_term}").replace(' ',
-                                                                                                                        '%20'),
+                                        description = f'{description}\n**{titles[i]}:**{specs[i]}'
+                            embed_msg = discord.Embed(title=productnames[item], description=description, colour=green,
+                                                      url=f"https://pcpartpicker.com{producturls[item]}",
                                                       timestamp=datetime.utcnow())
 
                             if len(images) > 0:
@@ -634,33 +554,68 @@ class PCPartPicker(commands.Cog):
                             await message.edit(embed=embed_msg)
 
                         else:
-                            db = open("scrapedata.txt", "w")
-                            db.write("0")
-                            rate_limited = "0"
-                            embed_msg = discord.Embed(
-                                title="Sorry, it seems like I am being rate limited. Please try again later.",
-                                colour=red, timestamp=datetime.utcnow())
-                            await message.edit(content="", embed=embed_msg)
-                            quake = self.bot.get_user(405798011172814868)
-                            await quake.send(f"Captcha Needed, bot down. Search query: `{search_term}`.")
+                            embed_msg = discord.Embed(title="Operation cancelled.", description="", colour=green,
+                                                      timestamp=datetime.utcnow())
+                            embed_msg.set_footer(text='Powered by PCPartPicker')
+                            await message.edit(embed=embed_msg)
+                    else:
+                        embed_msg = discord.Embed(title=f"No results found for '{search_term}'.", colour=green,
+                                                  timestamp=datetime.utcnow())
+                        await message.edit(embed=embed_msg)
                 else:
-                    db = open("scrapedata.txt", "w")
-                    db.write("0")
-                    rate_limited = "0"
-                    embed_msg = discord.Embed(
-                        title="Sorry, it seems like I am being rate limited. Please try again later.",
-                        colour=red, timestamp=datetime.utcnow())
-                    await message.edit(content="", embed=embed_msg)
-                    quake = self.bot.get_user(405798011172814868)
-                    await quake.send(f"Captcha Needed, bot down. Search query: `{search_term}`.")
+                    with concurrent.futures.ThreadPoolExecutor() as pool:
+                        titles, specs, images = await asyncio.get_event_loop().run_in_executor(pool, get_specs,
+                                                                                       f"https://pcpartpicker.com/search/?q={search_term}",
+                                                                                       'noncustom')
+                    if not str(titles) == 'rate_limited':
+                        description = ''
+                        if len(specs) > len(titles):
+                            for i in range(0, len(titles)):
+                                if description == '':
+                                    description = f'**{titles[i]}:**{specs[i]}'
+                                else:
+                                    description = f'{description}\n**{titles[i]}:**{specs[i]}'
+                        else:
+                            for i in range(0, len(specs)):
+                                if description == '':
+                                    description = f'**{titles[i]}:**{specs[i]}'
+                                else:
+                                    description = f'{description}\n**{titles[i]}:** {specs[i]}'
+                        embed_msg = discord.Embed(title=producturls, description=description, colour=green,
+                                                  url=(f"https://pcpartpicker.com/search/?q={search_term}").replace(' ',
+                                                                                                                    '%20'),
+                                                  timestamp=datetime.utcnow())
+
+                        if len(images) > 0:
+                            embed_msg.set_thumbnail(url=f"https:{images[0]}")
+
+                        await message.edit(embed=embed_msg)
+
+                    else:
+                        db = open("scrapedata.txt", "w")
+                        db.write("0")
+                        rate_limited = "0"
+                        embed_msg = discord.Embed(
+                            title="Sorry, it seems like I am being rate limited. Please try again later.",
+                            colour=green, timestamp=datetime.utcnow())
+                        await message.edit(content="", embed=embed_msg)
+                        quake = self.bot.get_user(405798011172814868)
+                        await quake.send(f"Captcha Needed, bot down. Search query: `{search_term}`.")
             else:
-                embed_msg = discord.Embed(title=f"No results found for '{search_term}'.", colour=red,
-                                          timestamp=datetime.utcnow())
-                await message.edit(embed=embed_msg)
+                db = open("scrapedata.txt", "w")
+                db.write("0")
+                rate_limited = "0"
+                embed_msg = discord.Embed(
+                    title="Sorry, it seems like I am being rate limited. Please try again later.",
+                    colour=green, timestamp=datetime.utcnow())
+                await message.edit(content="", embed=embed_msg)
+                quake = self.bot.get_user(405798011172814868)
+                await quake.send(f"Captcha Needed, bot down. Search query: `{search_term}`.")
         else:
-            embed_msg = discord.Embed(title="Sorry, it seems like I am being rate limited. Please try again later.",
-                                      colour=red, timestamp=datetime.utcnow())
-            await ctx.send(embed=embed_msg)
+            embed_msg = discord.Embed(title=f"No results found for '{search_term}'.", colour=green,
+                                      timestamp=datetime.utcnow())
+            await message.edit(embed=embed_msg)
+
 
     @commands.command(aliases=['pp', 'p', 'price'], description='shows the cheapest price for a part via search query (if the part is available). put the country\'s alpha-2 code (e.g. uk, fr, es) if you wish to see pricing in other regions. only works for supported countries on pcpartpicker. use ,regions to see a full list of supported regions as well as their alpha-2 codes.')
     @commands.cooldown(2, 60, commands.BucketType.member)
@@ -671,7 +626,6 @@ class PCPartPicker(commands.Cog):
                      'uk',
                      'fr', 'nz', 'au']
         await log(self.bot, 'partprice', ctx)
-        global rate_limited
         if not region.lower() in countries:
             if search_term == None:
                 searchterm = region
@@ -684,7 +638,7 @@ class PCPartPicker(commands.Cog):
 
         if rate_limited == '1':
             embed_msg = discord.Embed(title=f"Finding pricing for '{searchterm}' on PCPartPicker...",
-                                      timestamp=datetime.utcnow(), colour=red)
+                                      timestamp=datetime.utcnow(), colour=green)
             message = await ctx.send(embed=embed_msg)
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 productnames, producturls = await asyncio.get_event_loop().run_in_executor(pool, query, searchterm)
@@ -700,7 +654,7 @@ class PCPartPicker(commands.Cog):
                                     else:
                                         description = f"{description}\n{i + 1}. [{productnames[i]}]({'https://pcpartpicker.com' + producturls[i]})"
                                 embed_msg = discord.Embed(title=f"Showing results for {searchterm}:",
-                                                          description=description, colour=red,
+                                                          description=description, colour=green,
                                                           timestamp=datetime.utcnow())
                                 await message.edit(embed=embed_msg)
                                 one = "1\N{variation selector-16}\N{combining enclosing keycap}"
@@ -765,7 +719,7 @@ class PCPartPicker(commands.Cog):
                                             cheapestindex = -1
                                         formatted_prices = '\n'.join([f"**[{sellers[i]}]({links[i]}): {prices[i]}**" if i == cheapestindex else f"[{sellers[i]}]({links[i]}): {prices[i]}" for i in range(len(prices))])
                                         embed_msg = discord.Embed(title=f"Pricing for '{productnames[item]}':",
-                                                                  description=formatted_prices, colour=red,
+                                                                  description=formatted_prices, colour=green,
                                                                   url=f"https://{country}pcpartpicker.com{producturls[item]}",
                                                                   timestamp=datetime.utcnow())
                                         if len(images) > 0:
@@ -776,7 +730,7 @@ class PCPartPicker(commands.Cog):
                                         embed_msg = discord.Embed(
                                             title=f"No pricing available for '{productnames[item]}'.",
                                             description='',
-                                            colour=red, timestamp=datetime.utcnow())
+                                            colour=green, timestamp=datetime.utcnow())
                                         embed_msg.set_footer(text='Powered by PCPartPicker')
                                         await message.edit(embed=embed_msg)
                                 else:
@@ -785,17 +739,17 @@ class PCPartPicker(commands.Cog):
                                     rate_limited = "0"
                                     embed_msg = discord.Embed(
                                         title="Sorry, it seems like I am being rate limited. Please try again later.",
-                                        colour=red, timestamp=datetime.utcnow())
+                                        colour=green, timestamp=datetime.utcnow())
                                     await message.edit(content="", embed=embed_msg)
                                     quake = bot.get_user(405798011172814868)
                                     await quake.send(f"Captcha Needed, bot down. Search query: `{searchterm}`.")
                             else:
-                                embed_msg = discord.Embed(title="Operation cancelled.", description="", colour=red,
+                                embed_msg = discord.Embed(title="Operation cancelled.", description="", colour=green,
                                                           timestamp=datetime.utcnow())
                                 embed_msg.set_footer(text='Powered by PCPartPicker')
                                 await message.edit(embed=embed_msg)
                         else:
-                            embed_msg = discord.Embed(title=f"No results found for '{searchterm}'.", colour=red,
+                            embed_msg = discord.Embed(title=f"No results found for '{searchterm}'.", colour=green,
                                                       timestamp=datetime.utcnow())
                             await message.edit(embed=embed_msg)
                     else:
@@ -811,7 +765,7 @@ class PCPartPicker(commands.Cog):
                                 formatted_prices = '\n'.join([f"**[{sellers[i]}]({links[i]}): {prices[i]}**" if i == cheapestindex else f"[{sellers[i]}]({links[i]}): {prices[i]}" for i in range(len(prices))])
                                 if country == '':
                                     embed_msg = discord.Embed(title=f"Pricing for '{producturls}':",
-                                                              description=formatted_prices, colour=red,
+                                                              description=formatted_prices, colour=green,
                                                               url=f"https://{country}pcpartpicker.com/search/?q={searchterm}".replace(
                                                                   ' ', '%20'),
                                                               timestamp=datetime.utcnow())
@@ -823,7 +777,7 @@ class PCPartPicker(commands.Cog):
                                 else:
                                     embed_msg = discord.Embed(
                                         title=f"Pricing for '{producturls}' in {country.upper().replace('.', '')}:",
-                                        description=formatted_prices, colour=red,
+                                        description=formatted_prices, colour=green,
                                         url=f"https://{country}pcpartpicker.com/search/?q={searchterm}".replace(
                                                                   ' ', '%20'),
                                         timestamp=datetime.utcnow())
@@ -837,14 +791,14 @@ class PCPartPicker(commands.Cog):
                                     embed_msg = discord.Embed(
                                         title=f"No pricing available for '{producturls}' in the US.",
                                         description='',
-                                        colour=red, timestamp=datetime.utcnow())
+                                        colour=green, timestamp=datetime.utcnow())
                                     embed_msg.set_footer(text='Powered by PCPartPicker')
                                     await message.edit(embed=embed_msg)
                                 else:
                                     embed_msg = discord.Embed(
                                         title=f"No pricing available for '{producturls}' in {country.upper()}.",
                                         description='',
-                                        colour=red, timestamp=datetime.utcnow())
+                                        colour=green, timestamp=datetime.utcnow())
                                     embed_msg.set_footer(text='Powered by PCPartPicker')
                                     await message.edit(embed=embed_msg)
                         else:
@@ -853,7 +807,7 @@ class PCPartPicker(commands.Cog):
                             rate_limited = "0"
                             embed_msg = discord.Embed(
                                 title="Sorry, it seems like I am being rate limited. Please try again later.",
-                                colour=red, timestamp=datetime.utcnow())
+                                colour=green, timestamp=datetime.utcnow())
                             await message.edit(content="", embed=embed_msg)
                             quake = self.bot.get_user(405798011172814868)
                             await quake.send(f"Captcha Needed, bot down. Search query: `{searchterm}`.")
@@ -863,17 +817,17 @@ class PCPartPicker(commands.Cog):
                     rate_limited = "0"
                     embed_msg = discord.Embed(
                         title="Sorry, it seems like I am being rate limited. Please try again later.",
-                        colour=red, timestamp=datetime.utcnow())
+                        colour=green, timestamp=datetime.utcnow())
                     await message.edit(content="", embed=embed_msg)
                     quake = self.bot.get_user(405798011172814868)
                     await quake.send(f"Captcha Needed, bot down. Search query: `{query}`.")
             else:
-                embed_msg = discord.Embed(title=f"No results found for '{searchterm}'.", colour=red,
+                embed_msg = discord.Embed(title=f"No results found for '{searchterm}'.", colour=green,
                                           timestamp=datetime.utcnow())
                 await message.edit(embed=embed_msg)
         else:
             embed_msg = discord.Embed(title="Sorry, it seems like I am being rate limited. Please try again later.",
-                                      colour=red, timestamp=datetime.utcnow())
+                                      colour=green, timestamp=datetime.utcnow())
             await ctx.send(embed=embed_msg)
 
     @commands.command(aliases=['psc', 'specscustom', 'sc'], description='shows detailed specs for a part via pcpartpicker link.')
@@ -882,7 +836,7 @@ class PCPartPicker(commands.Cog):
         await log(self.bot, 'partspecscustom', ctx)
         global rate_limited
         if rate_limited == "1":
-            embed_msg = discord.Embed(title="Finding specs...", timestamp=datetime.utcnow(), colour=red)
+            embed_msg = discord.Embed(title="Finding specs...", timestamp=datetime.utcnow(), colour=green)
             message = await ctx.send(embed=embed_msg)
             try:
                 with concurrent.futures.ThreadPoolExecutor() as pool:
@@ -901,7 +855,7 @@ class PCPartPicker(commands.Cog):
                                 description = f'**{titles[i]}:** {specs[i]}'
                             else:
                                 description = f'{description}\n**{titles[i]}:** {specs[i]}'
-                    embed_msg = discord.Embed(title=name, description=description, colour=red,
+                    embed_msg = discord.Embed(title=name, description=description, colour=green,
                                               url=url,
                                               timestamp=datetime.utcnow())
 
@@ -916,17 +870,17 @@ class PCPartPicker(commands.Cog):
                     rate_limited = "0"
                     embed_msg = discord.Embed(
                         title="Sorry, it seems like I am being rate limited. Please try again later.",
-                        colour=red, timestamp=datetime.utcnow())
+                        colour=green, timestamp=datetime.utcnow())
                     await message.edit(embed=embed_msg)
                     quake = self.bot.get_user(405798011172814868)
                     await quake.send(f"Captcha Needed, bot down. Command: partspecscustom")
             except requests.exceptions.MissingSchema:
-                embed_msg = discord.Embed(title=f"No results found for {url}.", colour=red, timestamp=datetime.utcnow())
+                embed_msg = discord.Embed(title=f"No results found for {url}.", colour=green, timestamp=datetime.utcnow())
                 embed_msg.set_footer(text='Powered by PCPartPicker')
                 await message.edit(embed=embed_msg)
         else:
             embed_msg = discord.Embed(title="Sorry, it seems like I am being rate limited. Please try again later.",
-                                      colour=red, timestamp=datetime.utcnow())
+                                      colour=green, timestamp=datetime.utcnow())
             await ctx.send(embed=embed_msg)
 
     @commands.Cog.listener()
@@ -1061,7 +1015,7 @@ class PCPartPicker(commands.Cog):
 
                                                 if not len(issues) == 0:
                                                     await formattedmessage.add_reaction("⚠")
-                                                    embed_msg = discord.Embed(title=f"Found {len(issues)} potential issue(s) with your list", description=description, timestamp=datetime.utcnow(), colour=red, url=theurl)
+                                                    embed_msg = discord.Embed(title=f"Found {len(issues)} potential issue(s) with your list", description=description, timestamp=datetime.utcnow(), colour=green, url=theurl)
 
                                                     warning = ['⚠']
 
@@ -1095,7 +1049,7 @@ class PCPartPicker(commands.Cog):
             else:
                 description = f"{description}\n**{codes[i]}**: {countries[i]}"
         embed_msg = discord.Embed(title="Supported Regions", description=description,
-                                  colour=red, timestamp=datetime.utcnow())
+                                  colour=green, timestamp=datetime.utcnow())
         await ctx.message.author.send(embed=embed_msg)
         await ctx.message.add_reaction('📨')
 
@@ -1130,13 +1084,13 @@ class PCPartPicker(commands.Cog):
             else:
                 embed_msg = discord.Embed(title=f"'{country}' is not a valid region!",
                                           description="Use `,regions` for a list of supported regions.\nIf no region is given, the command will default to the US.",
-                                          colour=red, timestamp=datetime.utcnow())
+                                          colour=green, timestamp=datetime.utcnow())
                 await ctx.send(embed=embed_msg)
                 worked = False
 
             if worked is True:
                 embed_msg = discord.Embed(title=f"Fetching guides...",
-                                          colour=red, timestamp=datetime.utcnow())
+                                          colour=green, timestamp=datetime.utcnow())
                 send = await ctx.send(embed=embed_msg)
                 with concurrent.futures.ThreadPoolExecutor() as pool:
                     names, prices, urls = await asyncio.get_event_loop().run_in_executor(pool, get_build_guides, url)
@@ -1151,7 +1105,7 @@ class PCPartPicker(commands.Cog):
                             description = f"{description}\n{i + 1}. [{names[i]} ({prices[i]})]({f'https://{country}pcpartpicker.com{urls[i]}'})"
                     embed_msg = discord.Embed(title="PCPartPicker Build Guides",
                                               description=description,
-                                              colour=red, timestamp=datetime.utcnow(), url=url)
+                                              colour=green, timestamp=datetime.utcnow(), url=url)
                     embed_msg.add_field(name="Send ' , ' and then the corresponding number of the build in chat.",
                                         value='For example, `,10`.', inline=False)
                     await send.edit(embed=embed_msg)
@@ -1164,14 +1118,14 @@ class PCPartPicker(commands.Cog):
                     try:
                         item = int(message.content[1:]) - 1
                     except ValueError:
-                        embed_msg = discord.Embed(title=f"'{message.content[1:]}' is not a number!", colour=red,
+                        embed_msg = discord.Embed(title=f"'{message.content[1:]}' is not a number!", colour=green,
                                                   timestamp=datetime.utcnow())
                         await send.edit(embed=embed_msg)
                         worked = False
                     if worked is True:
 
                         embed_msg = discord.Embed(title=f"Fetching build...",
-                                                  colour=red, timestamp=datetime.utcnow())
+                                                  colour=green, timestamp=datetime.utcnow())
                         await send.edit(embed=embed_msg)
 
                         with concurrent.futures.ThreadPoolExecutor() as pool:
@@ -1189,7 +1143,7 @@ class PCPartPicker(commands.Cog):
                                         description = f"{description}\n**{producttypes[i]}:** {productnames[i]}"
                                 embed_msg = discord.Embed(title=names[item],
                                                           description=f"{description}\n\n**Estimated Wattage:** {wattage}\n**Total:** {prices[-1]}",
-                                                          colour=red, timestamp=datetime.utcnow(),
+                                                          colour=green, timestamp=datetime.utcnow(),
                                                           url=f'https://{country}pcpartpicker.com{urls[item]}')
                                 if len(images) > 0:
                                     embed_msg.set_thumbnail(url=f"https:{images[0]}")
@@ -1201,7 +1155,7 @@ class PCPartPicker(commands.Cog):
                                 rate_limited = "0"
                                 embed_msg = discord.Embed(
                                     title="Sorry, it seems like I am being rate limited. Please try again later.",
-                                    colour=red, timestamp=datetime.utcnow())
+                                    colour=green, timestamp=datetime.utcnow())
                                 await send.edit(content="", embed=embed_msg)
                                 quake = self.bot.get_user(405798011172814868)
                                 await quake.send(f"Captcha Needed, bot down. Command: buildguides.")
@@ -1211,7 +1165,7 @@ class PCPartPicker(commands.Cog):
                     rate_limited = "0"
                     embed_msg = discord.Embed(
                         title="Sorry, it seems like I am being rate limited. Please try again later.",
-                        colour=red, timestamp=datetime.utcnow())
+                        colour=green, timestamp=datetime.utcnow())
                     await ctx.send(embed=embed_msg)
                     quake = self.bot.get_user(405798011172814868)
                     await quake.send(f"Captcha Needed, bot down. Command: buildguides.")
@@ -1219,7 +1173,7 @@ class PCPartPicker(commands.Cog):
         else:
             embed_msg = discord.Embed(
                 title="Sorry, it seems like I am being rate limited. Please try again later.",
-                colour=red, timestamp=datetime.utcnow())
+                colour=green, timestamp=datetime.utcnow())
             await ctx.send(embed=embed_msg)
 
     @commands.command()
@@ -1262,7 +1216,7 @@ class PCPartPicker(commands.Cog):
                     embeds = []
 
                     for i in range(len(images)):
-                        embeds.append(discord.Embed(title=f"Price trends for '{part}':", description=titles_list[i], colour=red,
+                        embeds.append(discord.Embed(title=f"Price trends for '{part}':", description=titles_list[i], colour=green,
                                                     timestamp=datetime.utcnow()).set_image(url=f"https:{images[i]}").set_footer(
                             text=f'Page {i + 1} out of {len(images)}'))
 
@@ -1279,7 +1233,7 @@ class PCPartPicker(commands.Cog):
                     rate_limited = "0"
                     embed_msg = discord.Embed(
                         title="Sorry, it seems like I am being rate limited. Please try again later.",
-                        colour=red, timestamp=datetime.utcnow())
+                        colour=green, timestamp=datetime.utcnow())
                     await ctx.send(embed=embed_msg)
                     quake = self.bot.get_user(405798011172814868)
                     await quake.send(f"Captcha Needed, bot down. Command: trends")
@@ -1287,14 +1241,14 @@ class PCPartPicker(commands.Cog):
             else:
                 parts_list = "".join([f"- `{s}`\n" for s in parts])
                 embed_msg = discord.Embed(title=f"'{part}' is not a supported part!",
-                                          colour=red,
+                                          colour=green,
                                           timestamp=datetime.utcnow())
                 embed_msg.add_field(name='Supported Parts:', value=parts_list, inline=False)
                 await ctx.send(embed=embed_msg)
         else:
             embed_msg = discord.Embed(
                 title="Sorry, it seems like I am being rate limited. Please try again later.",
-                colour=red, timestamp=datetime.utcnow())
+                colour=green, timestamp=datetime.utcnow())
             await ctx.send(embed=embed_msg)
 
 
@@ -1323,7 +1277,7 @@ class PCPartPicker(commands.Cog):
                         else:
                             description = f"{description}\n{i + 1}. [{titles[i]}]({links[i]})"
                         cycles = cycles + 1
-                    embed_msg = discord.Embed(title="Select Subforum:", description=description, colour=red,
+                    embed_msg = discord.Embed(title="Select Subforum:", description=description, colour=green,
                                               timestamp=datetime.utcnow())
                     embed_msg.set_footer(text='Powered by pcpartpicker.com/forums')
                     await ctx.send(embed=embed_msg)
@@ -1334,12 +1288,12 @@ class PCPartPicker(commands.Cog):
                             description = f"{i + 1}. [{titles[i]}]({links[i]})"
                         else:
                             description = f"{description}\n{i + 1}. [{titles[i]}]({links[i]})"
-                    embed_msg = discord.Embed(title="", description=description, colour=red,
+                    embed_msg = discord.Embed(title="", description=description, colour=green,
                                               timestamp=datetime.utcnow())
                     embed_msg.set_footer(text='Powered by pcpartpicker.com/forums')
                     await ctx.send(embed=embed_msg)
                     embed_msg = discord.Embed(title="",
-                                              colour=red,
+                                              colour=green,
                                               timestamp=datetime.utcnow())
                     embed_msg.add_field(name="Send ' , ' and then the corresponding number of the subforum in chat.",
                                         value="E.g, `,10`.")
@@ -1354,7 +1308,7 @@ class PCPartPicker(commands.Cog):
                     try:
                         item = int(message.content[1:]) - 1
                     except ValueError:
-                        embed_msg = discord.Embed(title=f"'{message.content[1:]}' is not a number!", colour=red,
+                        embed_msg = discord.Embed(title=f"'{message.content[1:]}' is not a number!", colour=green,
                                                   timestamp=datetime.utcnow())
                         embed_msg.set_footer(text='Powered by pcpartpicker.com/forums')
                         await ctx.send(embed=embed_msg)
@@ -1370,7 +1324,7 @@ class PCPartPicker(commands.Cog):
                         except:
                             embed_msg = discord.Embed(
                                 title=f"No forum found with index or name '{forum}'. Use `,pcppforums` for a full list of forums.",
-                                colour=red,
+                                colour=green,
                                 timestamp=datetime.utcnow())
                             embed_msg.set_footer(text='Powered by pcpartpicker.com/forums')
                             await ctx.send(embed=embed_msg)
@@ -1392,7 +1346,7 @@ class PCPartPicker(commands.Cog):
                                     else:
                                         description = f"{description}\n{i + 1}. [{titles[i]}]({links[i]})"
                                 embed_msg = discord.Embed(title=f"Posts in {titlesog[item]}:", description=description,
-                                                          colour=red,
+                                                          colour=green,
                                                           timestamp=datetime.utcnow(), url=link_used)
                                 embed_msg.set_footer(text='Powered by pcpartpicker.com/forums')
                             else:
@@ -1402,7 +1356,7 @@ class PCPartPicker(commands.Cog):
                                     else:
                                         description = f"{description}\n{i + 1}. [{titles[i]}]({links[i]})"
                                 embed_msg = discord.Embed(title=f"Posts in {titlesog[item]}:", description=description,
-                                                          colour=red,
+                                                          colour=green,
                                                           timestamp=datetime.utcnow(), url=link_used)
                                 embed_msg.set_footer(text='Powered by pcpartpicker.com/forums')
                             message = await ctx.send(embed=embed_msg)
@@ -1456,7 +1410,7 @@ class PCPartPicker(commands.Cog):
                             if not item == 10:
                                 embed_msg = discord.Embed(title="Fetching post...",
                                                           description=f"Depending on the length of the post, this could take a while.",
-                                                          colour=red,
+                                                          colour=green,
                                                           timestamp=datetime.utcnow(), url=links[item])
                                 embed_msg.set_footer(text='Powered by pcpartpicker.com/forums')
                                 await message.edit(embed=embed_msg)
@@ -1470,7 +1424,7 @@ class PCPartPicker(commands.Cog):
                                     if len(contenttodisplay) > 2040:
                                         contenttodisplay = f"{contenttodisplay[0:2040]}..."
                                     embed_msg = discord.Embed(title=titles[item], description=f"{contenttodisplay}",
-                                                              colour=red,
+                                                              colour=green,
                                                               timestamp=datetime.utcnow(), url=links[item])
                                     embed_msg.add_field(name='Extra Details',
                                                         value="Posted by " + details[0].replace('\n', '') + ".",
@@ -1483,13 +1437,13 @@ class PCPartPicker(commands.Cog):
                                     rate_limited = "0"
                                     embed_msg = discord.Embed(
                                         title="Sorry, it seems like I am being rate limited. Please try again later.",
-                                        colour=red, timestamp=datetime.utcnow())
+                                        colour=green, timestamp=datetime.utcnow())
                                     embed_msg.set_footer(text='Powered by pcpartpicker.com/forums')
                                     await ctx.send(embed=embed_msg)
                                     quake = self.bot.get_user(405798011172814868)
                                     await quake.send(f"Captcha Needed, bot down. Command: pcppforums")
                             else:
-                                embed_msg = discord.Embed(title="Operation cancelled.", description="", colour=red,
+                                embed_msg = discord.Embed(title="Operation cancelled.", description="", colour=green,
                                                           timestamp=datetime.utcnow())
                                 embed_msg.set_footer(name='Powered by pcpartpicker.com/forums')
                                 await message.edit(embed=embed_msg)
@@ -1500,14 +1454,14 @@ class PCPartPicker(commands.Cog):
                             rate_limited = "0"
                             embed_msg = discord.Embed(
                                 title="Sorry, it seems like I am being rate limited. Please try again later.",
-                                colour=red, timestamp=datetime.utcnow())
+                                colour=green, timestamp=datetime.utcnow())
                             embed_msg.set_footer(text='Powered by pcpartpicker.com/forums')
                             await ctx.send(embed=embed_msg)
                             quake = self.bot.get_user(405798011172814868)
                             await quake.send(f"Captcha Needed, bot down. Command: pcppforums")
 
                     except ValueError:
-                        embed_msg = discord.Embed(title=f"'{item}' is an invalid number!", colour=red,
+                        embed_msg = discord.Embed(title=f"'{item}' is an invalid number!", colour=green,
                                                   timestamp=datetime.utcnow())
                         embed_msg.set_footer(text='Powered by pcpartpicker.com/forums')
                         await ctx.send(embed=embed_msg)
@@ -1518,7 +1472,7 @@ class PCPartPicker(commands.Cog):
                 rate_limited = "0"
                 embed_msg = discord.Embed(
                     title="Sorry, it seems like I am being rate limited. Please try again later.",
-                    colour=red, timestamp=datetime.utcnow())
+                    colour=green, timestamp=datetime.utcnow())
                 embed_msg.set_footer(text='Powered by pcpartpicker.com/forums')
                 await ctx.send(embed=embed_msg)
                 quake = self.bot.get_user(405798011172814868)
@@ -1527,7 +1481,7 @@ class PCPartPicker(commands.Cog):
         else:
             embed_msg = discord.Embed(
                 title="Sorry, it seems like I am being rate limited. Please try again later.",
-                colour=red, timestamp=datetime.utcnow())
+                colour=green, timestamp=datetime.utcnow())
             embed_msg.set_footer(text='Powered by pcpartpicker.com/forums')
             await ctx.send(embed=embed_msg)
 
@@ -1544,16 +1498,16 @@ class PCPartPicker(commands.Cog):
                 ranks = ['High End', 'Midrange', 'Low End', 'Budget']
                 embed_msg = discord.Embed(title=f"Case '{case_name}' saved as a {ranks[int(rank) - 1]}.",
                                           description="Check the `,cases` command to see the updated cases list.",
-                                          timestamp=datetime.utcnow(), colour=red)
+                                          timestamp=datetime.utcnow(), colour=green)
             except ValueError:
                 embed_msg = discord.Embed(title=f"'{rank}' is not a number between 1 and 4!",
-                                          timestamp=datetime.utcnow(), colour=red)
+                                          timestamp=datetime.utcnow(), colour=green)
             except IndexError:
                 embed_msg = discord.Embed(title=f"'{rank}' is not a number between 1 and 4!",
-                                          timestamp=datetime.utcnow(), colour=red)
+                                          timestamp=datetime.utcnow(), colour=green)
             await ctx.send(embed=embed_msg)
         else:
-            embed_msg = discord.Embed(title=f"You don't have permission to use that command!", colour=red,
+            embed_msg = discord.Embed(title=f"You don't have permission to use that command!", colour=green,
                                       timestamp=datetime.utcnow())
             await ctx.send(embed=embed_msg)
 
@@ -1607,7 +1561,7 @@ class PCPartPicker(commands.Cog):
             descs = [i for i in (high_end_cases, midrange_cases, low_end_cases, budget_cases)]
 
             for i in range(4):
-                embed_msg = discord.Embed(title=tiers[i], description=descs[i], colour=red, timestamp=datetime.utcnow())
+                embed_msg = discord.Embed(title=tiers[i], description=descs[i], colour=green, timestamp=datetime.utcnow())
                 embed_msg.set_footer(text=f'Tier {i + 1} out of 4')
                 embeds.append(embed_msg)
 
@@ -1636,7 +1590,7 @@ class PCPartPicker(commands.Cog):
 
             descs = [i for i in (high_end_cases, midrange_cases, low_end_cases, budget_cases)]
 
-            embed_msg = discord.Embed(title=tiers[tier], description=descs[tier], colour=red,
+            embed_msg = discord.Embed(title=tiers[tier], description=descs[tier], colour=green,
                                       timestamp=datetime.utcnow())
             message = await ctx.send(embed=embed_msg)
 
@@ -1675,13 +1629,13 @@ class PCPartPicker(commands.Cog):
                 cursor = await conn.execute(f"DELETE FROM cases WHERE name = '{case_name}'")
                 await conn.commit()
                 await conn.close()
-                embed_msg = discord.Embed(title=f"Deleted case '{case_name}'.", colour=red, timestamp=datetime.utcnow())
+                embed_msg = discord.Embed(title=f"Deleted case '{case_name}'.", colour=green, timestamp=datetime.utcnow())
             else:
-                embed_msg = discord.Embed(title=f"Case with name '{case_name}' not found.", colour=red,
+                embed_msg = discord.Embed(title=f"Case with name '{case_name}' not found.", colour=green,
                                           timestamp=datetime.utcnow())
             await ctx.send(embed=embed_msg)
         else:
-            embed_msg = discord.Embed(title=f"You don't have permission to use that command!", colour=red,
+            embed_msg = discord.Embed(title=f"You don't have permission to use that command!", colour=green,
                                       timestamp=datetime.utcnow())
             await ctx.send(embed=embed_msg)
 
@@ -1689,7 +1643,7 @@ class PCPartPicker(commands.Cog):
     async def overview(self, ctx, *, part):
         global rate_limited
         if rate_limited == "1":
-            embed_msg = discord.Embed(title=f"Finding info for '{part}' on PCPartPicker...", colour=red, timestamp=datetime.utcnow())
+            embed_msg = discord.Embed(title=f"Finding info for '{part}' on PCPartPicker...", colour=green, timestamp=datetime.utcnow())
             send = await ctx.send(embed=embed_msg)
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 productnames, producturls = await asyncio.get_event_loop().run_in_executor(pool, query, part)
@@ -1697,17 +1651,17 @@ class PCPartPicker(commands.Cog):
                 db = open("scrapedata.txt", "w")
                 db.write("0")
                 rate_limited = "0"
-                embed_msg = discord.Embed(title="Sorry, it seems like I am being rate limited. Please try again later.", colour=red, timestamp=datetime.utcnow())
+                embed_msg = discord.Embed(title="Sorry, it seems like I am being rate limited. Please try again later.", colour=green, timestamp=datetime.utcnow())
                 await send.edit(embed=embed_msg)
                 quake = self.bot.get_user(405798011172814868)
                 await quake.send(f"Captcha Needed, bot down. Command: overview, {part}")
                 return
             elif len(productnames) == 0:
-                embed_msg = discord.Embed(title=f"No results found for '{part}'.", colour=red, timestamp=datetime.utcnow())
+                embed_msg = discord.Embed(title=f"No results found for '{part}'.", colour=green, timestamp=datetime.utcnow())
                 await send.edit(embed=embed_msg)
             elif not productnames == "rate_limited" and len(productnames) > 0:
                 description = '\n'.join([f"{i+1}. [{productnames[i]}]({f'https://pcpartpicker.com{producturls[i]}'})" for i in range(len(productnames))])
-                embed_msg = discord.Embed(title=f"Showing results for {part}:", description=description, colour=red)
+                embed_msg = discord.Embed(title=f"Showing results for {part}:", description=description, colour=green)
                 embed_msg.set_footer(text="Powered by PCPartPicker")
                 await send.edit(embed=embed_msg)
                 reactions = ["1\N{variation selector-16}\N{combining enclosing keycap}",
@@ -1738,11 +1692,11 @@ class PCPartPicker(commands.Cog):
                 if not str(reaction.emoji) == reactions[-1]:
                     item = reactions.index(str(reaction.emoji))
                 else:
-                    embed_msg = discord.Embed(title=f"Operation Cancelled.", colour=red)
+                    embed_msg = discord.Embed(title=f"Operation Cancelled.", colour=green)
                     embed_msg.set_footer(text="Powered by PCPartPicker")
                     return
         else:
-            embed_msg = discord.Embed(title="Sorry, it seems like I am being rate limited. Please try again later.", colour=red, timestamp=datetime.utcnow())
+            embed_msg = discord.Embed(title="Sorry, it seems like I am being rate limited. Please try again later.", colour=green, timestamp=datetime.utcnow())
             embed_msg.set_footer(text="Powered by PCPartPicker")
             await ctx.send(embed=embed_msg)
 

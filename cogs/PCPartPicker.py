@@ -17,84 +17,49 @@ green = discord.Colour.from_rgb(0, 100, 0)
 allowed_ids = [405798011172814868, 370611001948635157, 287256464047865857, 454186048721780751, 191280151084924928, 698634807143563424, 411274336847134730, 479319375149662209, 750353117698064497, 629736214345416734, 746775313593270352]
 
 def query(search_term):
-    try:
-        page = requests.get(f"https://pcpartpicker.com/search/?q={search_term}")
-        soup = BeautifulSoup(page.content, 'html.parser')
-        product_name = soup.find(class_='pageTitle').get_text()
-        if product_name != 'Product Search': # if the search query redirects straight to a product page
-            return 'use_current', product_name
-        productnames = []
-        producturls = []
-        for a in soup.find_all(class_='search_results--link'): # finds the names of the products
-            productnames.append(a.get_text().replace('\n', '').replace('\\', '\n'))
-        for a in soup.find_all(href=True): # finds the product links
-            if not a['href'].startswith('/product/') or a['href'] in producturls: # makes sure its a PCPP product URL and
-                continue                                                          # that it's not already in the list
-            producturls.append(a['href'])
-        return productnames[:10], producturls[:10]
-    except IndexError:
-        return None, None # no results
+    page = requests.get(f"https://pcpartpicker.com/search/?q={search_term}")
+    soup = BeautifulSoup(page.content, 'html.parser')
+    product_name = soup.find(class_='pageTitle').get_text()
+    if product_name != 'Product Search': # if the search query redirects straight to a product page
+        return 'use_current', 'use_current'
+    productnames = []
+    producturls = []
+    for a in soup.find_all(class_='search_results--link'): # finds the names of the products
+        productnames.append(a.get_text().replace('\n', '').replace('\\', '\n'))
+    for a in soup.find_all(href=True): # finds the product links
+        if not a['href'].startswith('/product/') or a['href'] in producturls: # makes sure its a PCPP product URL and
+            continue                                                          # that it's not already in the list
+        producturls.append(a['href'])
+    return productnames[:10], producturls[:10]
 
 
 
 
-def get_specs(url, context):
-    if context == 'noncustom':
-        newtitles = []
-        titles = []
-        specs = []
-        images = []
-        page = requests.get(url)
-        soup = BeautifulSoup(page.content, 'html.parser')
-        for a in soup.find_all(class_='pageTitle'):
-            realtext = a.get_text()
-        if not realtext == 'Verification':
+def get_specs(url):
+    spec_names = []
+    spec_values = []
+    images = []
 
-            for img in soup.find_all('img', src=True):
-                if '//cdna.pcpartpicker.com/static/forever/images/product/' in img['src']:
-                    images.append(img['src'])
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    product_name = soup.find(class_='pageTitle').get_text()
+    for img in soup.find_all('img', src=True):
+        if '//cdna.pcpartpicker.com/static/forever/images/product/' in img['src']:
+            images.append(img['src'])
 
-            for a in soup.find_all(class_='group__title'):
-                text = a.get_text().replace('\n', '')
-                text = text.replace('\\', '\n')
-                newtitles.append(text)
-            for a in soup.find_all(class_='group__content'):
-                text = a.get_text().replace('\n', ' ')
-                text = text.replace('\\', '\n')
-                specs.append(text)
+    for a in soup.find_all(class_='group__title'):
+        name = a.get_text().replace('\n', '').replace('\\', '\n')
+        if name in spec_names:
+            continue
+        spec_names.append(name)
 
-            newtitles = list(dict.fromkeys(newtitles))
-            return newtitles, specs, images
-        else:
-            return 'rate_limited', 'rate_limited', 'rate_limited'
-    else:
-        newtitles = []
-        titles = []
-        specs = []
-        images = []
+    for a in soup.find_all(class_='group__content'):
+        text = a.get_text().replace('\n', ' ').replace('\\', '\n')
+        spec_values.append(text)
 
-        page = requests.get(url)
-        soup = BeautifulSoup(page.content, 'html.parser')
+    spec_names = list(dict.fromkeys(spec_names))
+    return spec_names, spec_values, images, product_name
 
-        for img in soup.find_all('img', src=True):
-            if '//cdna.pcpartpicker.com/static/forever/images/product/' in img['src']:
-                images.append(img['src'])
-
-        for a in soup.find_all(class_='pageTitle'):
-            realtext = a.get_text()
-        if not realtext == 'Verification':
-            for a in soup.find_all(class_='group__title'):
-                text = a.get_text().replace('\n', '')
-                text = text.replace('\\', '\n')
-                newtitles.append(text)
-            for a in soup.find_all(class_='group__content'):
-                text = a.get_text().replace('\n', ' ')
-                text = text.replace('\\', ' ')
-                specs.append(text)
-            newtitles = list(dict.fromkeys(newtitles))
-            return newtitles, specs, realtext, images
-        else:
-            return 'rate_limited', 'rate_limited', 'rate_limited', 'rate_limited'
 
 
 
@@ -460,161 +425,54 @@ class PCPartPicker(commands.Cog):
         await log(self.bot, 'partspecs', ctx)
         embed_msg = discord.Embed(title=f"Finding specs for '{search_term}' on PCPartPicker...", timestamp=datetime.utcnow(), colour=green)
         message = await ctx.send(embed=embed_msg)
+
         with concurrent.futures.ThreadPoolExecutor() as pool:
             productnames, producturls = await asyncio.get_event_loop().run_in_executor(pool, query, search_term)
-        if not productnames is None:
-            if not productnames == 'rate_limited':
-                if not productnames == 'use_current':
-                    if not len(productnames) == 0:
-                        if not len(productnames) == 1:
-                            description = ''
-                            for i in range(0, len(productnames)):
-                                if description == '':
-                                    description = f"{i + 1}. [{productnames[i]}]({'https://pcpartpicker.com' + producturls[i]})"
-                                else:
-                                    description = f"{description}\n{i + 1}. [{productnames[i]}]({'https://pcpartpicker.com' + producturls[i]})"
-                            embed_msg = discord.Embed(title=f"Showing results for {search_term}:",
-                                                      description=description, colour=green,
-                                                      timestamp=datetime.utcnow())
-                            await message.edit(embed=embed_msg)
-                            one = "1\N{variation selector-16}\N{combining enclosing keycap}"
-                            two = "2\N{variation selector-16}\N{combining enclosing keycap}"
-                            three = "3\N{variation selector-16}\N{combining enclosing keycap}"
-                            four = "4\N{variation selector-16}\N{combining enclosing keycap}"
-                            five = "5\N{variation selector-16}\N{combining enclosing keycap}"
-                            six = "6\N{variation selector-16}\N{combining enclosing keycap}"
-                            seven = "7\N{variation selector-16}\N{combining enclosing keycap}"
-                            eight = "8\N{variation selector-16}\N{combining enclosing keycap}"
-                            nine = "9\N{variation selector-16}\N{combining enclosing keycap}"
-                            ten = "\N{keycap ten}"
-                            ex = "\u274C"
-                            reactions = []
-                            iterate = 0
-                            for r in (one, two, three, four, five, six, seven, eight, nine, ten):
-                                iterate = iterate + 1
-                                if not iterate > len(producturls):
-                                    await message.add_reaction(r)
-                                    reactions.append(r)
-                            await message.add_reaction(ex)
-                            reactions.append(ex)
 
-                            def check(reaction, user):
-                                return user == ctx.message.author and str(reaction.emoji) in reactions
-
-                            reaction, user = await self.bot.wait_for('reaction_add', check=check)
-                            if str(reaction.emoji) == one:
-                                item = 0
-                            if str(reaction.emoji) == two:
-                                item = 1
-                            if str(reaction.emoji) == three:
-                                item = 2
-                            if str(reaction.emoji) == four:
-                                item = 3
-                            if str(reaction.emoji) == five:
-                                item = 4
-                            if str(reaction.emoji) == six:
-                                item = 5
-                            if str(reaction.emoji) == seven:
-                                item = 6
-                            if str(reaction.emoji) == eight:
-                                item = 7
-                            if str(reaction.emoji) == nine:
-                                item = 8
-                            if str(reaction.emoji) == ten:
-                                item = 9
-                            if str(reaction.emoji) == ex:
-                                item = 10
-                        else:
-                            item = 0
-                        if not item == 10:
-                            with concurrent.futures.ThreadPoolExecutor() as pool:
-                                titles, specs, images = await asyncio.get_event_loop().run_in_executor(pool, get_specs,
-                                                                                               f"https://pcpartpicker.com{producturls[item]}",
-                                                                                               'noncustom')
-                            description = ''
-                            if len(specs) > len(titles):
-                                for i in range(0, len(titles)):
-                                    if description == '':
-                                        description = f'**{titles[i]}:**{specs[i]}'
-                                    else:
-                                        description = f'{description}\n**{titles[i]}:**{specs[i]}'
-                            else:
-                                for i in range(0, len(specs)):
-                                    if description == '':
-                                        description = f'**{titles[i]}:**{specs[i]}'
-                                    else:
-                                        description = f'{description}\n**{titles[i]}:**{specs[i]}'
-                            embed_msg = discord.Embed(title=productnames[item], description=description, colour=green,
-                                                      url=f"https://pcpartpicker.com{producturls[item]}",
-                                                      timestamp=datetime.utcnow())
-
-                            if len(images) > 0:
-                                embed_msg.set_thumbnail(url=f"https:{images[0]}")
-
-                            await message.edit(embed=embed_msg)
-
-                        else:
-                            embed_msg = discord.Embed(title="Operation cancelled.", description="", colour=green,
-                                                      timestamp=datetime.utcnow())
-                            embed_msg.set_footer(text='Powered by PCPartPicker')
-                            await message.edit(embed=embed_msg)
-                    else:
-                        embed_msg = discord.Embed(title=f"No results found for '{search_term}'.", colour=green,
-                                                  timestamp=datetime.utcnow())
-                        await message.edit(embed=embed_msg)
-                else:
-                    with concurrent.futures.ThreadPoolExecutor() as pool:
-                        titles, specs, images = await asyncio.get_event_loop().run_in_executor(pool, get_specs,
-                                                                                       f"https://pcpartpicker.com/search/?q={search_term}",
-                                                                                       'noncustom')
-                    if not str(titles) == 'rate_limited':
-                        description = ''
-                        if len(specs) > len(titles):
-                            for i in range(0, len(titles)):
-                                if description == '':
-                                    description = f'**{titles[i]}:**{specs[i]}'
-                                else:
-                                    description = f'{description}\n**{titles[i]}:**{specs[i]}'
-                        else:
-                            for i in range(0, len(specs)):
-                                if description == '':
-                                    description = f'**{titles[i]}:**{specs[i]}'
-                                else:
-                                    description = f'{description}\n**{titles[i]}:** {specs[i]}'
-                        embed_msg = discord.Embed(title=producturls, description=description, colour=green,
-                                                  url=(f"https://pcpartpicker.com/search/?q={search_term}").replace(' ',
-                                                                                                                    '%20'),
-                                                  timestamp=datetime.utcnow())
-
-                        if len(images) > 0:
-                            embed_msg.set_thumbnail(url=f"https:{images[0]}")
-
-                        await message.edit(embed=embed_msg)
-
-                    else:
-                        db = open("scrapedata.txt", "w")
-                        db.write("0")
-                        rate_limited = "0"
-                        embed_msg = discord.Embed(
-                            title="Sorry, it seems like I am being rate limited. Please try again later.",
-                            colour=green, timestamp=datetime.utcnow())
-                        await message.edit(content="", embed=embed_msg)
-                        quake = self.bot.get_user(405798011172814868)
-                        await quake.send(f"Captcha Needed, bot down. Search query: `{search_term}`.")
-            else:
-                db = open("scrapedata.txt", "w")
-                db.write("0")
-                rate_limited = "0"
-                embed_msg = discord.Embed(
-                    title="Sorry, it seems like I am being rate limited. Please try again later.",
-                    colour=green, timestamp=datetime.utcnow())
-                await message.edit(content="", embed=embed_msg)
-                quake = self.bot.get_user(405798011172814868)
-                await quake.send(f"Captcha Needed, bot down. Search query: `{search_term}`.")
-        else:
-            embed_msg = discord.Embed(title=f"No results found for '{search_term}'.", colour=green,
-                                      timestamp=datetime.utcnow())
+        if len(productnames) == 0:
+            embed_msg = discord.Embed(title=f"No results found for '{search_term}'.", colour=green, timestamp=datetime.utcnow())
             await message.edit(embed=embed_msg)
+            return
+        elif len(productnames) == 1:
+            product_url = f"https://pcpartpicker.com{producturls[0]}"
+        elif productnames == 'use_current':
+            product_url = f"https://pcpartpicker.com/search/?q={search_term}"
+        else:
+            slices = [f"{i + 1}. [{productnames[i]}]({f'https://pcpartpicker.com{producturls[i]}'})" for i in range(len(productnames)) if i < 10]
+            while True:
+                total = sum([len(item) for item in slices])
+                if total < 1900:
+                    break
+                slices.pop(-1)
+            description = '\n'.join(slices)
+            embed_msg = discord.Embed(title=f"Showing results for {search_term}:", description=description, colour=green, timestamp=datetime.utcnow())
+            await message.edit(embed=embed_msg)
+
+            for i in range(len(slices)):
+                await message.add_reaction(self.bot.reactions[i])
+
+            await message.add_reaction(self.bot.reactions[-1])
+
+            def check(reaction, user):
+                return user == ctx.message.author and str(reaction.emoji) in self.bot.reactions
+
+            reaction, user = await self.bot.wait_for('reaction_add', check=check)
+
+            if not str(reaction.emoji) == self.bot.reactions[-1]:
+                product_url = f"https://pcpartpicker.com{producturls[self.bot.reactions.index(str(reaction.emoji))]}"
+            else:
+                await message.delete()
+                return
+
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            spec_titles, spec_values, images, product_name = await asyncio.get_event_loop().run_in_executor(pool, get_specs, product_url)
+
+        description = '\n'.join([f"**{spec_titles[i]}:**{spec_values[i]}" for i in range(len(spec_titles))])
+        embed_msg = discord.Embed(title=product_name, description=description, colour=green, url=product_url.replace(' ', '+'), timestamp=datetime.utcnow())
+        if len(images) > 0: embed_msg.set_thumbnail(url=f"https:{images[0]}")
+        await message.edit(embed=embed_msg)
+
+
 
 
     @commands.command(aliases=['pp', 'p', 'price'], description='shows the cheapest price for a part via search query (if the part is available). put the country\'s alpha-2 code (e.g. uk, fr, es) if you wish to see pricing in other regions. only works for supported countries on pcpartpicker. use ,regions to see a full list of supported regions as well as their alpha-2 codes.')

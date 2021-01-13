@@ -6,7 +6,7 @@ from discord.ext.commands.cooldowns import BucketType
 from datetime import datetime
 import asyncio
 
-red = discord.Colour.from_rgb(0, 100, 0)
+red = discord.Colour(0x1e807c)
 
 translator = google_translator()
 c = CurrencyConverter()

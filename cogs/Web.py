@@ -28,7 +28,7 @@ subs = ['pcmasterrace', 'buildapc', 'buildapcsales', 'corsair', 'razer', 'intel'
         'nvidia', 'phanteks', 'battlestations', 'pcgaming', 'gamingpc', 'watercooling', 'overclocking', 'sffpc', 'nzxt',
         'hackintosh', 'monitors', 'pcbuild', 'hardware', 'linustechtips', 'raspberry_pi', 'python', 'cats']
 
-red = discord.Colour.from_rgb(0, 100, 0)
+red = discord.Colour(0x1e807c)
 
 
 async def log(bot, command, ctx):

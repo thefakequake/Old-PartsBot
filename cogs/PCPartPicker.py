@@ -11,8 +11,9 @@ import DiscordUtils
 import math
 import aiosqlite
 import random
+import json
 
-green = discord.Colour.from_rgb(0, 100, 0)
+green = discord.Colour(0x1e807c)
 
 allowed_ids = [405798011172814868, 370611001948635157, 287256464047865857, 454186048721780751, 191280151084924928, 698634807143563424, 411274336847134730, 479319375149662209, 750353117698064497, 629736214345416734, 746775313593270352]
 
@@ -67,36 +68,32 @@ def get_specs(url):
 def get_price(url):
     page = requests.get(url)
     soup = BeautifulSoup(page.content, 'html.parser')
+    realtext = soup.find_all(class_='pageTitle')
+    prices = []
+    links = []
+    sellers = []
+    images = []
+    stock = []
 
-    for a in soup.find_all(class_='pageTitle'):
-        realtext = a.get_text()
-    if not realtext == 'Verification':
-        prices = []
-        links = []
-        sellers = []
-        images = []
-        stock = []
+    for a in soup.find_all(class_='td__finalPrice'):
+        prices.append(a.get_text().replace('\n',''))
+    for a in soup.find_all('a',href=True):
+        if (a['href'])[0:4] == '/mr/':
+            links.append(f"https://pcpartpicker.com{a['href']}")
+    for a in soup.find_all(class_="td__availability"):
+        text = a.get_text().replace('\n', '')
+        if text == '':
+            stock.append("Out of stock")
+        else:
+            stock.append(text)
+    for a in soup.find_all(class_='td__logo'):
+        sellers.append(a.select('img')[0]['alt'].split()[0])
+    for img in soup.find_all('img', src=True):
+        if '//cdna.pcpartpicker.com/static/forever/images/product/' in img['src']:
+            images.append(img['src'])
+    links = list(dict.fromkeys(links))
+    return prices, links, sellers, images, stock
 
-        for a in soup.find_all(class_='td__finalPrice'):
-            prices.append(a.get_text().replace('\n',''))
-        for a in soup.find_all('a',href=True):
-            if (a['href'])[0:4] == '/mr/':
-                links.append(f"https://pcpartpicker.com{a['href']}")
-        for a in soup.find_all(class_="td__availability"):
-            text = a.get_text().replace('\n', '')
-            if text == '':
-                stock.append("Out of stock")
-            else:
-                stock.append(text)
-        for a in soup.find_all(class_='td__logo'):
-            sellers.append(a.select('img')[0]['alt'].split()[0])
-        for img in soup.find_all('img', src=True):
-            if '//cdna.pcpartpicker.com/static/forever/images/product/' in img['src']:
-                images.append(img['src'])
-        links = list(dict.fromkeys(links))
-        return prices, links, sellers, images, stock
-    else:
-        return 'rate_limited', 'rate_limited', 'rate_limited', 'rate_limited', 'rate_limited'
 
 
 def format_link(url, message):
@@ -465,7 +462,7 @@ class PCPartPicker(commands.Cog):
                 return
 
         with concurrent.futures.ThreadPoolExecutor() as pool:
-            spec_titles, spec_values, images, product_name = await asyncio.get_event_loop().run_in_executor(pool, get_specs, product_url)
+             spec_titles, spec_values, images, product_name = await asyncio.get_event_loop().run_in_executor(pool, get_specs, product_url)
 
         description = '\n'.join([f"**{spec_titles[i]}:**{spec_values[i]}" for i in range(len(spec_titles))])
         embed_msg = discord.Embed(title=product_name, description=description, colour=green, url=product_url.replace(' ', '+'), timestamp=datetime.utcnow())
@@ -477,12 +474,8 @@ class PCPartPicker(commands.Cog):
 
     @commands.command(aliases=['pp', 'p', 'price'], description='shows the cheapest price for a part via search query (if the part is available). put the country\'s alpha-2 code (e.g. uk, fr, es) if you wish to see pricing in other regions. only works for supported countries on pcpartpicker. use ,regions to see a full list of supported regions as well as their alpha-2 codes.')
     @commands.cooldown(2, 60, commands.BucketType.member)
-    async def partprice(self, ctx, region, *, search_term=None):
-        countries = ['ae', 'tr', 'th', 'se', 'es', 'kr', 'sg', 'sa', 'qa', 'pt', 'pl', 'ph', 'om', 'no', 'nl', 'mx',
-                     'kw',
-                     'jp', 'it', 'il', 'ie', 'in', 'hk', 'de', 'fr', 'fi', 'dk', 'ca', 'br', 'be', 'bh', 'ar', 'us',
-                     'uk',
-                     'fr', 'nz', 'au']
+    async def partprice(self, ctx, region: region.lower(), *, search_term=None):
+        countries = [*bot.countries]
         await log(self.bot, 'partprice', ctx)
         if not region.lower() in countries:
             if search_term == None:
@@ -491,8 +484,13 @@ class PCPartPicker(commands.Cog):
                 searchterm = f"{region} {search_term}"
             country = ''
         else:
-            searchterm = search_term
+            search_string = search_term
             country = f"{region.lower()}."
+
+        if region.lower() in countries:
+            search_string = search_term
+            country = f"{region.lower()}."
+
 
         if rate_limited == '1':
             embed_msg = discord.Embed(title=f"Finding pricing for '{searchterm}' on PCPartPicker...",
@@ -1497,66 +1495,85 @@ class PCPartPicker(commands.Cog):
                                       timestamp=datetime.utcnow())
             await ctx.send(embed=embed_msg)
 
+    # @commands.command()
+    # async def overview(self, ctx, *, part):
+    #     global rate_limited
+    #     if rate_limited == "1":
+    #         embed_msg = discord.Embed(title=f"Finding info for '{part}' on PCPartPicker...", colour=green, timestamp=datetime.utcnow())
+    #         send = await ctx.send(embed=embed_msg)
+    #         with concurrent.futures.ThreadPoolExecutor() as pool:
+    #             productnames, producturls = await asyncio.get_event_loop().run_in_executor(pool, query, part)
+    #         if productnames == "rate_limited":
+    #             db = open("scrapedata.txt", "w")
+    #             db.write("0")
+    #             rate_limited = "0"
+    #             embed_msg = discord.Embed(title="Sorry, it seems like I am being rate limited. Please try again later.", colour=green, timestamp=datetime.utcnow())
+    #             await send.edit(embed=embed_msg)
+    #             quake = self.bot.get_user(405798011172814868)
+    #             await quake.send(f"Captcha Needed, bot down. Command: overview, {part}")
+    #             return
+    #         elif len(productnames) == 0:
+    #             embed_msg = discord.Embed(title=f"No results found for '{part}'.", colour=green, timestamp=datetime.utcnow())
+    #             await send.edit(embed=embed_msg)
+    #         elif not productnames == "rate_limited" and len(productnames) > 0:
+    #             description = '\n'.join([f"{i+1}. [{productnames[i]}]({f'https://pcpartpicker.com{producturls[i]}'})" for i in range(len(productnames))])
+    #             embed_msg = discord.Embed(title=f"Showing results for {part}:", description=description, colour=green)
+    #             embed_msg.set_footer(text="Powered by PCPartPicker")
+    #             await send.edit(embed=embed_msg)
+    #             reactions = ["1\N{variation selector-16}\N{combining enclosing keycap}",
+    #                          "2\N{variation selector-16}\N{combining enclosing keycap}",
+    #                          "3\N{variation selector-16}\N{combining enclosing keycap}",
+    #                          "4\N{variation selector-16}\N{combining enclosing keycap}",
+    #                          "5\N{variation selector-16}\N{combining enclosing keycap}",
+    #                          "6\N{variation selector-16}\N{combining enclosing keycap}",
+    #                          "7\N{variation selector-16}\N{combining enclosing keycap}",
+    #                          "8\N{variation selector-16}\N{combining enclosing keycap}",
+    #                          "9\N{variation selector-16}\N{combining enclosing keycap}",
+    #                          "\N{keycap ten}",
+    #                          "\u274C"]
+    #
+    #             if len(listofchoices) > 10:
+    #                 listofchoices = listofchoices[:9]
+    #
+    #             for i in range(len(listofchoices)):
+    #                 await message.add_reaction(reactions[i])
+    #
+    #             await message.add_reaction(reactions[-1])
+    #
+    #             def check(reaction, user):
+    #                 return user == ctx.message.author and str(reaction.emoji) in reactions
+    #
+    #             reaction, user = await self.bot.wait_for('reaction_add', check=check)
+    #
+    #             if not str(reaction.emoji) == reactions[-1]:
+    #                 item = reactions.index(str(reaction.emoji))
+    #             else:
+    #                 embed_msg = discord.Embed(title=f"Operation Cancelled.", colour=green)
+    #                 embed_msg.set_footer(text="Powered by PCPartPicker")
+    #                 return
+    #     else:
+    #         embed_msg = discord.Embed(title="Sorry, it seems like I am being rate limited. Please try again later.", colour=green, timestamp=datetime.utcnow())
+    #         embed_msg.set_footer(text="Powered by PCPartPicker")
+    #         await ctx.send(embed=embed_msg)
+
+
+
     @commands.command()
-    async def overview(self, ctx, *, part):
-        global rate_limited
-        if rate_limited == "1":
-            embed_msg = discord.Embed(title=f"Finding info for '{part}' on PCPartPicker...", colour=green, timestamp=datetime.utcnow())
-            send = await ctx.send(embed=embed_msg)
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                productnames, producturls = await asyncio.get_event_loop().run_in_executor(pool, query, part)
-            if productnames == "rate_limited":
-                db = open("scrapedata.txt", "w")
-                db.write("0")
-                rate_limited = "0"
-                embed_msg = discord.Embed(title="Sorry, it seems like I am being rate limited. Please try again later.", colour=green, timestamp=datetime.utcnow())
-                await send.edit(embed=embed_msg)
-                quake = self.bot.get_user(405798011172814868)
-                await quake.send(f"Captcha Needed, bot down. Command: overview, {part}")
-                return
-            elif len(productnames) == 0:
-                embed_msg = discord.Embed(title=f"No results found for '{part}'.", colour=green, timestamp=datetime.utcnow())
-                await send.edit(embed=embed_msg)
-            elif not productnames == "rate_limited" and len(productnames) > 0:
-                description = '\n'.join([f"{i+1}. [{productnames[i]}]({f'https://pcpartpicker.com{producturls[i]}'})" for i in range(len(productnames))])
-                embed_msg = discord.Embed(title=f"Showing results for {part}:", description=description, colour=green)
-                embed_msg.set_footer(text="Powered by PCPartPicker")
-                await send.edit(embed=embed_msg)
-                reactions = ["1\N{variation selector-16}\N{combining enclosing keycap}",
-                             "2\N{variation selector-16}\N{combining enclosing keycap}",
-                             "3\N{variation selector-16}\N{combining enclosing keycap}",
-                             "4\N{variation selector-16}\N{combining enclosing keycap}",
-                             "5\N{variation selector-16}\N{combining enclosing keycap}",
-                             "6\N{variation selector-16}\N{combining enclosing keycap}",
-                             "7\N{variation selector-16}\N{combining enclosing keycap}",
-                             "8\N{variation selector-16}\N{combining enclosing keycap}",
-                             "9\N{variation selector-16}\N{combining enclosing keycap}",
-                             "\N{keycap ten}",
-                             "\u274C"]
+    async def refreshcountries(self, ctx):
+        page = requests.get("https://pcpartpicker.com")
+        soup = BeautifulSoup(page.content, "html.parser")
+        selector = soup.find(class_="select select--small language-selector pp-country-select")
+        slices = [slice for slice in str(selector).split('\n') if not "<select" in slice and not "</select" in slice]
+        country_data = {}
+        for slice in slices:
+            country_data[slice.split('"')[-2]] = slice.replace("<", ">").split(">")[2]
+        formatted_json = json.dumps(country_data, indent=4)
+        await ctx.author.send(f"```json\n{formatted_json}```")
+        with open("countries.json", "w") as file:
+            file.write(formatted_json)
+        bot.countries = country_data
+        await ctx.send(embed=discord.Embed(title="Countries updated", colour=green))
 
-                if len(listofchoices) > 10:
-                    listofchoices = listofchoices[:9]
-
-                for i in range(len(listofchoices)):
-                    await message.add_reaction(reactions[i])
-
-                await message.add_reaction(reactions[-1])
-
-                def check(reaction, user):
-                    return user == ctx.message.author and str(reaction.emoji) in reactions
-
-                reaction, user = await self.bot.wait_for('reaction_add', check=check)
-
-                if not str(reaction.emoji) == reactions[-1]:
-                    item = reactions.index(str(reaction.emoji))
-                else:
-                    embed_msg = discord.Embed(title=f"Operation Cancelled.", colour=green)
-                    embed_msg.set_footer(text="Powered by PCPartPicker")
-                    return
-        else:
-            embed_msg = discord.Embed(title="Sorry, it seems like I am being rate limited. Please try again later.", colour=green, timestamp=datetime.utcnow())
-            embed_msg.set_footer(text="Powered by PCPartPicker")
-            await ctx.send(embed=embed_msg)
 
 def setup(bot):
     bot.add_cog(PCPartPicker(bot))

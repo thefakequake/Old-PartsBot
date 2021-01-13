@@ -9,7 +9,7 @@ from datetime import datetime
 import requests
 import aiosqlite
 
-red = discord.Colour.from_rgb(0, 100, 0)
+red = discord.Colour(0x1e807c)
 
 file = open("credentials.json")
 

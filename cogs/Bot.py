@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands, tasks
 from datetime import datetime
 
-red = discord.Colour.from_rgb(0, 100, 0)
+red = discord.Colour(0x1e807c)
 
 status_ids = [405798011172814868, 287256464047865857, 370611001948635157, 399672562788859906]
 
@@ -87,7 +87,7 @@ class Bot(commands.Cog):
     @commands.command(description='sends bot information including invite link, official discord and credits.')
     async def info(self, ctx):
         embed_msg = discord.Embed(title="About PartsBot.",
-                                  description="PartsBot was created by QuaKe#5943.\nPartsBot scrapes [PCPartPicker](https://pcpartpicker.com/) and is programmed in Python with the [discord.py](https://github.com/Rapptz/discord.py) API wrapper.\n\n[Invite Link](https://discord.com/api/oauth2/authorize?client_id=769886576321888256&permissions=0&scope=bot) • [Official Discord Server](https://discord.gg/WM9pHp8) • [Discord Bot List](https://discordbotlist.com/bots/partsbot) • [Github](https://github.com/QuaKe8782/PartsBot)\n\nSpecial thanks to Bogdan, Duck Dude, Zorf, Ozone and John Benber.",
+                                  description="PartsBot was created by QuaKe#5943.\nPartsBot scrapes [PCPartPicker](https://pcpartpicker.com/) and is programmed in Python with the [discord.py](https://github.com/Rapptz/discord.py) API wrapper.\n\n[Invite Link](https://discord.com/api/oauth2/authorize?client_id=769886576321888256&permissions=0&scope=bot) • [Official Discord Server](https://discord.gg/WM9pHp8) • [Patreon](https://patreon.com/partsbot) • [Discord Bot List](https://discordbotlist.com/bots/partsbot) • [Github](https://github.com/QuaKe8782/PartsBot)\n\nSpecial thanks to Bogdan, Duck Dude, Zorf, Ozone and John Benber.\nShout out to Grxffiti.",
                                   timestamp=datetime.utcnow(), colour=red)
         await ctx.send(embed=embed_msg)
         

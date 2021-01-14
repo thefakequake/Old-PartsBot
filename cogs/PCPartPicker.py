@@ -467,7 +467,13 @@ class PCPartPicker(commands.Cog):
         description = '\n'.join([f"**{spec_titles[i]}:**{spec_values[i]}" for i in range(len(spec_titles))])
         embed_msg = discord.Embed(title=product_name, description=description, colour=green, url=product_url.replace(' ', '+'), timestamp=datetime.utcnow())
         if len(images) > 0: embed_msg.set_thumbnail(url=f"https:{images[0]}")
+        
         await message.edit(embed=embed_msg)
+        
+        try:
+            await message.clear_reactions()
+        except:
+            pass
 
 
 
@@ -538,7 +544,7 @@ class PCPartPicker(commands.Cog):
             formatted_pricing = "No pricing available."
 
         if country == '':
-            embed_msg = discord.Embed(title=f"Pricing for '{product_name}' in US:", description=formatted_prices, timestamp=datetime.utcnow(), url=product_url.replace(' ', '+'), colour=green)
+            embed_msg = discord.Embed(title=f"Pricing for '{product_name}' in US:", description=formatted_pricing, timestamp=datetime.utcnow(), url=product_url.replace(' ', '+'), colour=green)
         else:
             embed_msg = discord.Embed(title=f"Pricing for '{product_name}' in {country.upper()[:-1]}:", description=formatted_prices, timestamp=datetime.utcnow(), url=product_url.replace(' ', '+'), colour=green)
 
@@ -546,6 +552,11 @@ class PCPartPicker(commands.Cog):
             embed_msg.set_thumbnail(url=f"https:{images[0]}")
 
         await message.edit(embed=embed_msg)
+        
+        try:
+            await message.clear_reactions()
+        except:
+            pass
 
 
     @commands.command(aliases=['psc', 'specscustom', 'sc'], description='shows detailed specs for a part via pcpartpicker link.')

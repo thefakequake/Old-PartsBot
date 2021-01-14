@@ -7,6 +7,7 @@ import re
 import asyncio
 import requests
 from bs4 import BeautifulSoup
+from utils import Member
 
 red = discord.Colour(0x1e807c)
 
@@ -324,7 +325,7 @@ class Builds(commands.Cog):
             await ctx.send(embed=embed_msg)
 
     @commands.command()
-    async def build(self, ctx, *, member: discord.Member = None):
+    async def build(self, ctx, *, member: utils.Member = None):
 
         conn = await aiosqlite.connect("bot.db")
         cursor = await conn.execute("SELECT * from builds")

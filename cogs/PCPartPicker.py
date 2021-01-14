@@ -539,14 +539,14 @@ class PCPartPicker(commands.Cog):
             prices, links, sellers, images, stock, product_name = await asyncio.get_event_loop().run_in_executor(pool, get_price, product_url)
 
         if len(prices) > 0:
-            formatted_prices = '\n'.join([f"**[{sellers[i]}]({links[i]}): {prices[i]}**" if stock[i] == "In stock" else f"[{sellers[i]}]({links[i]}): {prices[i]}" for i in range(len(prices))])
+            formatted_pricing = '\n'.join([f"**[{sellers[i]}]({links[i]}): {prices[i]}**" if stock[i] == "In stock" else f"[{sellers[i]}]({links[i]}): {prices[i]}" for i in range(len(prices))])
         else:
             formatted_pricing = "No pricing available."
 
         if country == '':
             embed_msg = discord.Embed(title=f"Pricing for '{product_name}' in US:", description=formatted_pricing, timestamp=datetime.utcnow(), url=product_url.replace(' ', '+'), colour=green)
         else:
-            embed_msg = discord.Embed(title=f"Pricing for '{product_name}' in {country.upper()[:-1]}:", description=formatted_prices, timestamp=datetime.utcnow(), url=product_url.replace(' ', '+'), colour=green)
+            embed_msg = discord.Embed(title=f"Pricing for '{product_name}' in {country.upper()[:-1]}:", description=formatted_pricing, timestamp=datetime.utcnow(), url=product_url.replace(' ', '+'), colour=green)
 
         if len(images) > 0:
             embed_msg.set_thumbnail(url=f"https:{images[0]}")

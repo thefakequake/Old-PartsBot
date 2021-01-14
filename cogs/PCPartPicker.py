@@ -451,10 +451,18 @@ class PCPartPicker(commands.Cog):
             await message.add_reaction(self.bot.reactions[-1])
 
             def check(reaction, user):
-                return user == ctx.message.author and str(reaction.emoji) in self.bot.reactions
-
-            reaction, user = await self.bot.wait_for('reaction_add', check=check)
-
+                return user == ctx.message.author and str(reaction.emoji) in self.bot.reactions and reaction.message == message
+            
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=60)
+            except asyncio.TimeoutError:
+                embed_msg = discord.Embed(title="Timed out.", colour=green, timestamp=datetime.utcnow())
+                await message.edit(embed=embed_msg)
+                try:
+                    await message.clear_reactions()
+                except:
+                    pass
+                return
             if not str(reaction.emoji) == self.bot.reactions[-1]:
                 product_url = f"https://pcpartpicker.com{producturls[self.bot.reactions.index(str(reaction.emoji))]}"
             else:
@@ -525,9 +533,18 @@ class PCPartPicker(commands.Cog):
             await message.add_reaction(self.bot.reactions[-1])
 
             def check(reaction, user):
-                return user == ctx.message.author and str(reaction.emoji) in self.bot.reactions
-
-            reaction, user = await self.bot.wait_for('reaction_add', check=check)
+                return user == ctx.message.author and str(reaction.emoji) in self.bot.reactions and reaction.message == message
+            
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=30)
+            except asyncio.TimeoutError:
+                embed_msg = discord.Embed(title="Timed out.", colour=green, timestamp=datetime.utcnow())
+                await message.edit(embed=embed_msg)
+                try:
+                    await message.clear_reactions()
+                except:
+                    pass
+                return
 
             if not str(reaction.emoji) == self.bot.reactions[-1]:
                 product_url = f"https://{country}pcpartpicker.com{producturls[self.bot.reactions.index(str(reaction.emoji))]}"

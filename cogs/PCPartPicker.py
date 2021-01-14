@@ -68,7 +68,7 @@ def get_specs(url):
 def get_price(url):
     page = requests.get(url)
     soup = BeautifulSoup(page.content, 'html.parser')
-    realtext = soup.find_all(class_='pageTitle')
+    page_title = soup.find(class_='pageTitle').get_text()
     prices = []
     links = []
     sellers = []
@@ -92,7 +92,7 @@ def get_price(url):
         if '//cdna.pcpartpicker.com/static/forever/images/product/' in img['src']:
             images.append(img['src'])
     links = list(dict.fromkeys(links))
-    return prices, links, sellers, images, stock
+    return prices, links, sellers, images, stock, page_title
 
 
 
@@ -474,217 +474,79 @@ class PCPartPicker(commands.Cog):
 
     @commands.command(aliases=['pp', 'p', 'price'], description='shows the cheapest price for a part via search query (if the part is available). put the country\'s alpha-2 code (e.g. uk, fr, es) if you wish to see pricing in other regions. only works for supported countries on pcpartpicker. use ,regions to see a full list of supported regions as well as their alpha-2 codes.')
     @commands.cooldown(2, 60, commands.BucketType.member)
-    async def partprice(self, ctx, region: region.lower(), *, search_term=None):
-        countries = [*bot.countries]
+    async def partprice(self, ctx, region, *, search_term=None):
+        countries = [*self.bot.countries]
         await log(self.bot, 'partprice', ctx)
-        if not region.lower() in countries:
-            if search_term == None:
-                searchterm = region
-            else:
-                searchterm = f"{region} {search_term}"
-            country = ''
-        else:
-            search_string = search_term
-            country = f"{region.lower()}."
 
         if region.lower() in countries:
             search_string = search_term
             country = f"{region.lower()}."
-
-
-        if rate_limited == '1':
-            embed_msg = discord.Embed(title=f"Finding pricing for '{searchterm}' on PCPartPicker...",
-                                      timestamp=datetime.utcnow(), colour=green)
-            message = await ctx.send(embed=embed_msg)
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                productnames, producturls = await asyncio.get_event_loop().run_in_executor(pool, query, searchterm)
-            if not productnames is None:
-                if not productnames == 'rate_limited':
-                    if not productnames == 'use_current':
-                        if not len(productnames) == 0:
-                            if not len(productnames) == 1:
-                                description = ''
-                                for i in range(0, len(productnames)):
-                                    if description == '':
-                                        description = f"{i + 1}. [{productnames[i]}]({'https://pcpartpicker.com' + producturls[i]})"
-                                    else:
-                                        description = f"{description}\n{i + 1}. [{productnames[i]}]({'https://pcpartpicker.com' + producturls[i]})"
-                                embed_msg = discord.Embed(title=f"Showing results for {searchterm}:",
-                                                          description=description, colour=green,
-                                                          timestamp=datetime.utcnow())
-                                await message.edit(embed=embed_msg)
-                                one = "1\N{variation selector-16}\N{combining enclosing keycap}"
-                                two = "2\N{variation selector-16}\N{combining enclosing keycap}"
-                                three = "3\N{variation selector-16}\N{combining enclosing keycap}"
-                                four = "4\N{variation selector-16}\N{combining enclosing keycap}"
-                                five = "5\N{variation selector-16}\N{combining enclosing keycap}"
-                                six = "6\N{variation selector-16}\N{combining enclosing keycap}"
-                                seven = "7\N{variation selector-16}\N{combining enclosing keycap}"
-                                eight = "8\N{variation selector-16}\N{combining enclosing keycap}"
-                                nine = "9\N{variation selector-16}\N{combining enclosing keycap}"
-                                ten = "\N{keycap ten}"
-                                ex = "\u274C"
-                                reactions = []
-                                iterate = 0
-                                for r in (one, two, three, four, five, six, seven, eight, nine, ten):
-                                    iterate = iterate + 1
-                                    if not iterate > len(producturls):
-                                        await message.add_reaction(r)
-                                        reactions.append(r)
-                                await message.add_reaction(ex)
-                                reactions.append(ex)
-
-                                def check(reaction, user):
-                                    return user == ctx.message.author and str(reaction.emoji) in reactions
-
-                                reaction, user = await self.bot.wait_for('reaction_add', check=check)
-                                if str(reaction.emoji) == one:
-                                    item = 0
-                                if str(reaction.emoji) == two:
-                                    item = 1
-                                if str(reaction.emoji) == three:
-                                    item = 2
-                                if str(reaction.emoji) == four:
-                                    item = 3
-                                if str(reaction.emoji) == five:
-                                    item = 4
-                                if str(reaction.emoji) == six:
-                                    item = 5
-                                if str(reaction.emoji) == seven:
-                                    item = 6
-                                if str(reaction.emoji) == eight:
-                                    item = 7
-                                if str(reaction.emoji) == nine:
-                                    item = 8
-                                if str(reaction.emoji) == ten:
-                                    item = 9
-                                if str(reaction.emoji) == ex:
-                                    item = 10
-                            else:
-                                item = 0
-                            if not item == 10:
-                                with concurrent.futures.ThreadPoolExecutor() as pool:
-                                    prices, links, sellers, images, stock = await asyncio.get_event_loop().run_in_executor(pool,
-                                                                                                            get_price,
-                                                                                                            f"https://{country}pcpartpicker.com{producturls[item]}")
-                                if not str(prices) == 'rate_limited':
-                                    if len(prices) > 0:
-                                        try:
-                                            cheapestindex = stock.index('In stock')
-                                        except ValueError:
-                                            cheapestindex = -1
-                                        formatted_prices = '\n'.join([f"**[{sellers[i]}]({links[i]}): {prices[i]}**" if i == cheapestindex else f"[{sellers[i]}]({links[i]}): {prices[i]}" for i in range(len(prices))])
-                                        embed_msg = discord.Embed(title=f"Pricing for '{productnames[item]}':",
-                                                                  description=formatted_prices, colour=green,
-                                                                  url=f"https://{country}pcpartpicker.com{producturls[item]}",
-                                                                  timestamp=datetime.utcnow())
-                                        if len(images) > 0:
-                                            embed_msg.set_thumbnail(url=f"https:{images[0]}")
-
-                                        await message.edit(embed=embed_msg)
-                                    else:
-                                        embed_msg = discord.Embed(
-                                            title=f"No pricing available for '{productnames[item]}'.",
-                                            description='',
-                                            colour=green, timestamp=datetime.utcnow())
-                                        embed_msg.set_footer(text='Powered by PCPartPicker')
-                                        await message.edit(embed=embed_msg)
-                                else:
-                                    db = open("scrapedata.txt", "w")
-                                    db.write("0")
-                                    rate_limited = "0"
-                                    embed_msg = discord.Embed(
-                                        title="Sorry, it seems like I am being rate limited. Please try again later.",
-                                        colour=green, timestamp=datetime.utcnow())
-                                    await message.edit(content="", embed=embed_msg)
-                                    quake = bot.get_user(405798011172814868)
-                                    await quake.send(f"Captcha Needed, bot down. Search query: `{searchterm}`.")
-                            else:
-                                embed_msg = discord.Embed(title="Operation cancelled.", description="", colour=green,
-                                                          timestamp=datetime.utcnow())
-                                embed_msg.set_footer(text='Powered by PCPartPicker')
-                                await message.edit(embed=embed_msg)
-                        else:
-                            embed_msg = discord.Embed(title=f"No results found for '{searchterm}'.", colour=green,
-                                                      timestamp=datetime.utcnow())
-                            await message.edit(embed=embed_msg)
-                    else:
-                        with concurrent.futures.ThreadPoolExecutor() as pool:
-                            prices, links, sellers, images, stock = await asyncio.get_event_loop().run_in_executor(pool, get_price,
-                                                                                                    f"https://{country}pcpartpicker.com/search/?q={searchterm}")
-                        if not str(prices) == 'rate_limited':
-                            if len(prices) > 0:
-                                try:
-                                    cheapestindex = stock.index('In stock')
-                                except ValueError:
-                                    cheapestindex = -1
-                                formatted_prices = '\n'.join([f"**[{sellers[i]}]({links[i]}): {prices[i]}**" if i == cheapestindex else f"[{sellers[i]}]({links[i]}): {prices[i]}" for i in range(len(prices))])
-                                if country == '':
-                                    embed_msg = discord.Embed(title=f"Pricing for '{producturls}':",
-                                                              description=formatted_prices, colour=green,
-                                                              url=f"https://{country}pcpartpicker.com/search/?q={searchterm}".replace(
-                                                                  ' ', '%20'),
-                                                              timestamp=datetime.utcnow())
-
-                                    if len(images) > 0:
-                                        embed_msg.set_thumbnail(url=f"https:{images[0]}")
-
-                                    await message.edit(embed=embed_msg)
-                                else:
-                                    embed_msg = discord.Embed(
-                                        title=f"Pricing for '{producturls}' in {country.upper().replace('.', '')}:",
-                                        description=formatted_prices, colour=green,
-                                        url=f"https://{country}pcpartpicker.com/search/?q={searchterm}".replace(
-                                                                  ' ', '%20'),
-                                        timestamp=datetime.utcnow())
-
-                                    if len(images) > 0:
-                                        embed_msg.set_thumbnail(url=f"https:{images[0]}")
-
-                                    await message.edit(embed=embed_msg)
-                            else:
-                                if country == '':
-                                    embed_msg = discord.Embed(
-                                        title=f"No pricing available for '{producturls}' in the US.",
-                                        description='',
-                                        colour=green, timestamp=datetime.utcnow())
-                                    embed_msg.set_footer(text='Powered by PCPartPicker')
-                                    await message.edit(embed=embed_msg)
-                                else:
-                                    embed_msg = discord.Embed(
-                                        title=f"No pricing available for '{producturls}' in {country.upper()}.",
-                                        description='',
-                                        colour=green, timestamp=datetime.utcnow())
-                                    embed_msg.set_footer(text='Powered by PCPartPicker')
-                                    await message.edit(embed=embed_msg)
-                        else:
-                            db = open("scrapedata.txt", "w")
-                            db.write("0")
-                            rate_limited = "0"
-                            embed_msg = discord.Embed(
-                                title="Sorry, it seems like I am being rate limited. Please try again later.",
-                                colour=green, timestamp=datetime.utcnow())
-                            await message.edit(content="", embed=embed_msg)
-                            quake = self.bot.get_user(405798011172814868)
-                            await quake.send(f"Captcha Needed, bot down. Search query: `{searchterm}`.")
-                else:
-                    db = open("scrapedata.txt", "w")
-                    db.write("0")
-                    rate_limited = "0"
-                    embed_msg = discord.Embed(
-                        title="Sorry, it seems like I am being rate limited. Please try again later.",
-                        colour=green, timestamp=datetime.utcnow())
-                    await message.edit(content="", embed=embed_msg)
-                    quake = self.bot.get_user(405798011172814868)
-                    await quake.send(f"Captcha Needed, bot down. Search query: `{query}`.")
-            else:
-                embed_msg = discord.Embed(title=f"No results found for '{searchterm}'.", colour=green,
-                                          timestamp=datetime.utcnow())
-                await message.edit(embed=embed_msg)
         else:
-            embed_msg = discord.Embed(title="Sorry, it seems like I am being rate limited. Please try again later.",
+            if search_term is None: search_string = region
+            else: search_string = f"{region} {search_term}"
+            country = ''
+
+        embed_msg = discord.Embed(title=f"Finding pricing for '{search_string}' on PCPartPicker...",
+                                  timestamp=datetime.utcnow(), colour=green)
+        message = await ctx.send(embed=embed_msg)
+
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            productnames, producturls = await asyncio.get_event_loop().run_in_executor(pool, query, search_string)
+        if len(productnames) == 0:
+            embed_msg = discord.Embed(title=f"No results found for '{search_string}'.", colour=green, timestamp=datetime.utcnow())
+            await message.edit(embed=embed_msg)
+            return
+        if len(productnames) == 1:
+            product_url = f"https://{country}pcpartpicker.com{producturls[0]}"
+        elif productnames == 'use_current':
+            product_url = f"https://{country}pcpartpicker.com/search/?q={search_string}"
+        else:
+            slices = [f"{i + 1}. [{productnames[i]}]({f'https://{country}pcpartpicker.com{producturls[i]}'})" for i in
+                      range(len(productnames)) if i < 10]
+            while True:
+                total = sum([len(item) for item in slices])
+                if total < 1900:
+                    break
+                slices.pop(-1)
+            description = '\n'.join(slices)
+            embed_msg = discord.Embed(title=f"Showing results for {search_term}:", description=description,
                                       colour=green, timestamp=datetime.utcnow())
-            await ctx.send(embed=embed_msg)
+            await message.edit(embed=embed_msg)
+
+            for i in range(len(slices)):
+                await message.add_reaction(self.bot.reactions[i])
+
+            await message.add_reaction(self.bot.reactions[-1])
+
+            def check(reaction, user):
+                return user == ctx.message.author and str(reaction.emoji) in self.bot.reactions
+
+            reaction, user = await self.bot.wait_for('reaction_add', check=check)
+
+            if not str(reaction.emoji) == self.bot.reactions[-1]:
+                product_url = f"https://{country}pcpartpicker.com{producturls[self.bot.reactions.index(str(reaction.emoji))]}"
+            else:
+                await message.delete()
+                return
+
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            prices, links, sellers, images, stock, product_name = await asyncio.get_event_loop().run_in_executor(pool, get_price, product_url)
+
+        if len(prices) > 0:
+            formatted_prices = '\n'.join([f"**[{sellers[i]}]({links[i]}): {prices[i]}**" if stock[i] == "In stock" else f"[{sellers[i]}]({links[i]}): {prices[i]}" for i in range(len(prices))])
+        else:
+            formatted_pricing = "No pricing available."
+
+        if country == '':
+            embed_msg = discord.Embed(title=f"Pricing for '{product_name}' in US:", description=formatted_prices, timestamp=datetime.utcnow(), url=product_url.replace(' ', '+'), colour=green)
+        else:
+            embed_msg = discord.Embed(title=f"Pricing for '{product_name}' in {country.upper()[:-1]}:", description=formatted_prices, timestamp=datetime.utcnow(), url=product_url.replace(' ', '+'), colour=green)
+
+        if len(images) > 0:
+            embed_msg.set_thumbnail(url=f"https:{images[0]}")
+
+        await message.edit(embed=embed_msg)
+
 
     @commands.command(aliases=['psc', 'specscustom', 'sc'], description='shows detailed specs for a part via pcpartpicker link.')
     @commands.cooldown(2, 60, commands.BucketType.member)

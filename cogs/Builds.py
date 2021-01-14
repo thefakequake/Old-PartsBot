@@ -325,7 +325,7 @@ class Builds(commands.Cog):
             await ctx.send(embed=embed_msg)
 
     @commands.command()
-    async def build(self, ctx, *, member: utils.Member = None):
+    async def build(self, ctx, *, member: Member = None):
 
         conn = await aiosqlite.connect("bot.db")
         cursor = await conn.execute("SELECT * from builds")

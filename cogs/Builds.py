@@ -327,41 +327,36 @@ class Builds(commands.Cog):
     @commands.command()
     async def build(self, ctx, *, member: Member = None):
 
-        conn = await aiosqlite.connect("bot.db")
-        cursor = await conn.execute("SELECT * from builds")
-        info = await cursor.fetchall()
-        await conn.commit()
-        await conn.close()
+        user = ctx.author
+        if member != None:
+            user = member
 
-        if not member is None:
+        async with aiosqlite.connect("bot.db") as conn:
+            cursor = await conn.execute("SELECT * from builds WHERE userid IS (?)", (user.id,))
+            info = await cursor.fetchall()
 
-            foundlist = False
-            for i in range(len(info)):
-                if foundlist is False:
-                    if info[i][0] == member.id:
-                        embed_msg = discord.Embed(title=f"{member.name}'s Build", description=info[i][1], url=info[i][2], colour=red, timestamp=datetime.utcnow())
-                        await ctx.send(embed=embed_msg)
-                        foundlist = True
+        if len(info) < 1:
+            if member is None:
+                embed_msg = discord.Embed(
+                    title="You don't have a build saved!",
+                    description="You can create one using the `,buildcreate` command.",
+                    colour=red,
+                    timestamp=datetime.utcnow()
+                )
+            else:
+                embed_msg = discord.Embed(
+                    title=f"{member.name} doesn't have a build saved!",
+                    description="They can create one using the `,buildcreate` command.",
+                    colour=red,
+                    timestamp=datetime.utcnow()
+                )
+            await ctx.send(embed=embed_msg)
+            return
 
-            if foundlist is False:
+        build = info[0]
+        embed_msg = discord.Embed(title=f"{user.name}'s Build", description=build[1], url=build[2], colour=red, timestamp=datetime.utcnow())
+        await ctx.send(embed=embed_msg)
 
-                embed_msg = discord.Embed(title=f"{member.name} doesn't have a build saved!", colour=red, timestamp=datetime.utcnow())
-                await ctx.send(embed=embed_msg)
-
-        else:
-
-            foundlist = False
-            for i in range(len(info)):
-                if foundlist is False:
-                    if info[i][0] == ctx.message.author.id:
-                        embed_msg = discord.Embed(title=f"{ctx.message.author.name}'s Build", description=info[i][1], url=info[i][2], colour=red, timestamp=datetime.utcnow())
-                        await ctx.send(embed=embed_msg)
-                        foundlist = True
-
-            if foundlist is False:
-
-                embed_msg = discord.Embed(title="You don't have a build saved!", colour=red, timestamp=datetime.utcnow())
-                await ctx.send(embed=embed_msg)
 
     @build.error
     async def build_error(self, ctx, error):

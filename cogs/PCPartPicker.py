@@ -87,7 +87,7 @@ def get_price(url):
         else:
             stock.append(text)
     for a in soup.find_all(class_='td__logo'):
-        sellers.append(a.select('img')[0]['alt'].split()[0])
+        sellers.append(a.select('img')[0]['alt']) #.split()[0]
     for img in soup.find_all('img', src=True):
         if '//cdna.pcpartpicker.com/static/forever/images/product/' in img['src']:
             images.append(img['src'])
@@ -149,7 +149,7 @@ def format_product_link(url):
     product_name = soup.find(class_="pageTitle").get_text()
     prices = [f"{a.get_text()}" for a in soup.find_all(class_="td__finalPrice")]
     buy_links = [f"{url.split('com')[0] + 'com'}{a['href']}" for a in soup.find_all(href=True) if a["href"].startswith("/mr/")]
-    vendors = [a.select('img')[0]['alt'].split()[0] for a in soup.find_all(class_='td__logo')]
+    vendors = [a.select('img')[0]['alt'] for a in soup.find_all(class_='td__logo')]
     stock = [a.get_text().replace('\n', '') for a in soup.find_all(class_="td__availability td__availability--inStock")]
     try:
         index = stock.index('In stock')

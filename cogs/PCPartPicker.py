@@ -12,6 +12,7 @@ import math
 import aiosqlite
 import random
 import json
+import string
 
 green = discord.Colour(0x1e807c)
 
@@ -32,7 +33,6 @@ def query(search_term):
             continue                                                          # that it's not already in the list
         producturls.append(a['href'])
     return productnames[:10], producturls[:10]
-
 
 
 
@@ -96,148 +96,76 @@ def get_price(url):
 
 
 
-def format_link(url, message):
-        producturls = []
-        productnames = []
-        producttypes = []
-        newproductnames = []
-        newproducttypes = []
-        prices = []
-        images = []
-        linkfound = []
+def format_pcpp_link(url):
+    producturls = []
+    productnames = []
 
-        page = requests.get(url)
-        soup = BeautifulSoup(page.content, 'html.parser')
-        realtext = ''
-        for a in soup.find_all(class_='pageTitle'):
-            realtext = a.get_text()
-        if not realtext == 'Verification':
-            text = soup.find_all(class_='td__name')
-            for a in text:
-                if 'From parametric selection:' in a.get_text():
-                    matches = re.finditer('From parametric selection:', a.get_text())
-                    matches_positions = [match.start() for match in matches]
-                    productnames.append(a.get_text()[0:matches_positions[0]])
-                else:
-                    if 'From parametric filter:' in a.get_text():
-                        matches = re.finditer('From parametric filter:', a.get_text())
-                        matches_positions = [match.start() for match in matches]
-                        productnames.append(a.get_text()[0:matches_positions[0]])
-                    else:
-                        productnames.append(a.get_text())
-                if 'a href=' in str(a) and not '#view_custom_part' in str(a):
-                    linkfound.append(True)
-                    elements = str(a).split('"')
-                    for element in elements:
-                        if element.startswith("/product/"):
-                            producturls.append(f"https://pcpartpicker.com:/{element}")
-                else:
-                    linkfound.append(False)
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, 'html.parser')
 
-            text = soup.find_all(class_='td__component')
-            for a in text:
-                producttypes.append(a.get_text())
-            text = soup.find_all(class_='td__price')
-            for a in text:
-                if not '-' in a.get_text():
-                    if 'No' in a.get_text() and 'Available' in a.get_text():
-                        prices.append('No Prices Available')
-                    else:
-                        if a.get_text().replace('\n', '').replace('Price', '') == '':
-                            prices.append('No Prices Available')
-                        else:
-                            prices.append(a.get_text().replace('\n', '').replace('Price', ''))
-            for b in range(len(producttypes)):
-                stringedit = productnames[b].replace('\n', '')
-                stringedit = stringedit.replace('\u200b', '')
-                stringedit = stringedit.replace(
-                    'Note: The following custom part link was user-provided. PCPartPicker cannot vouch for its validity or safety. If you follow this link, you are doing so at your own risk.Loading...',
-                    '')
-                newproductnames.append(stringedit)
-                stringedit = producttypes[b].replace('\n', '')
-                stringedit = stringedit.replace('\u200b', '')
-                stringedit = stringedit.replace(
-                    'Note: The following custom part link was user-provided. PCPartPicker cannot vouch for its validity or safety. If you follow this link, you are doing so at your own risk.Loading...',
-                    '')
-                stringedit = stringedit.replace('From parametric filter:', ' From parametric filter: ')
-                newproducttypes.append(stringedit)
-            wattage = ''
-            for a in soup.find_all(class_='partlist__keyMetric'):
-                wattage = a.get_text()
-            wattage = wattage.replace('Estimated Wattage:', '')
-            wattage = wattage.replace('\n', '')
-            for img in soup.find_all('img', src=True):
-                if '//cdna.pcpartpicker.com/static/forever/images/product/' in img['src']:
-                    images.append(img['src'])
 
-            for link in soup.find_all(href=True):
-                if '/product/' in link['href'] and not '/product/' == link['href']:
-                    producturls.append(f"https://pcpartpicker.com{link['href']}")
-
-            newproducturls = []
-
-            falses = 0
-            for i in range(len(linkfound)):
-                if linkfound[i] is False:
-                    newproducturls.append('No URL')
-                    falses += 1
-                else:
-                    newproducturls.append(producturls[i - falses])
-
-            thelist = ''
-            for i in range(len(newproductnames)):
-                newline = ''
-                if not thelist == '':
-                    newline = '\n'
-                if linkfound[i] is True:
-                    thelist = f"{thelist}**{newline}{newproducttypes[i]}** - [{newproductnames[i]}]({newproducturls[i]})"
-                else:
-                    thelist = f"{thelist}**{newline}{newproducttypes[i]}** - {newproductnames[i]}"
-            if len(thelist) > 1950:
-                thelist = ''
-                for i in range(len(newproductnames)):
-                    newline = ''
-                    if not thelist == '':
-                        newline = '\n'
-                    thelist = f"{thelist}**{newline}{newproducttypes[i]}** - {newproductnames[i]}"
-                if len(thelist) > 1950:
-                    thelist = thelist[0:1950]
-            embed_msg = discord.Embed(title=f"PCPartPicker List", description=f"{thelist}\n\n**Estimated Wattage:** {wattage}\n**Total:** {prices[-1]}",
-                                      colour=green, url=url)
-
-            pricinglist = ''
-
-            for i in range(len(newproductnames)):
-                newline = ''
-                if not pricinglist == '':
-                    newline = '\n'
-                if linkfound[i] is True:
-                    pricinglist = f"{pricinglist}{newline}[{newproductnames[i]}]({newproducturls[i]}) - {prices[i]}"
-                else:
-                    pricinglist = f"{pricinglist}{newline}{newproductnames[i]} - {prices[i]}"
-
-            if len(pricinglist) > 1950:
-                pricinglist = ''
-                for i in range(len(newproductnames)):
-                    newline = ''
-                    if not pricinglist == '':
-                        newline = '\n'
-                    pricinglist = f"{pricinglist}{newline}**{newproductnames[i]}** - {prices[i]}"
-                if len(pricinglist) > 1950:
-                    pricinglist = pricinglist[0:1950]
-
-            embed_msg = discord.Embed(title=f"PCPartPicker List", description=f"{thelist}\n\n**Estimated Wattage:** {wattage}\n**Total:** {prices[-1]}",
-                                      colour=green, url=url)
-
-            pricing_breakdown_embed = discord.Embed(title="Pricing Breakdown", description=pricinglist, url=url, colour=green)
-
-            return embed_msg, thelist, pricing_breakdown_embed
+    for a in soup.find_all(class_='td__name'):
+        if 'From parametric selection:' in a.get_text():
+            productnames.append(a.get_text().split('From parametric selection:')[0].replace('\n', ''))
+        elif 'From parametric filter:' in a.get_text():
+            productnames.append(a.get_text().split('From parametric filter:')[0].replace('\n', ''))
         else:
-            db = open("scrapedata.txt", "w")
-            db.write("0")
-            global rate_limited
-            rate_limited = "0"
-            return "rate_limited", "rate_limited", "rate_limited"
+            productnames.append(a.get_text().replace('\n', ''))
+        if 'a href=' in str(a) and not '#view_custom_part' in str(a):
+            elements = str(a).split('"')
+            for element in elements:
+                if element.startswith("/product/"):
+                    producturls.append(f"{url.split('com')[0]}com{element}")
+        else:
+            producturls.append(None)
+
+    producttypes = [a.get_text().replace('\n', '') for a in soup.find_all(class_='td__component')]
+
+    products = []
+
+    for i in range(len(producttypes)):
+        products.append((producttypes[i], productnames[i], producturls[i]))
+
+    try:
+        wattage = soup.find(class_='partlist__keyMetric').get_text().replace('\n', '').replace("Estimated Wattage:", '')
+    except (AttributeError, IndexError):
+        wattage = None
+
+    prices = [a.get_text() for a in soup.find_all(class_='td__price')]
+
+    if len(prices) == 0: prices = None
+
+    page_title = soup.find(class_="pageTitle").get_text()
+
+    return products, wattage, prices, page_title
+
+
+def format_product_link(url):
+
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, "html.parser")
+
+    compatible_links = [f"[{a.get_text()}]({url.split('com')[0] + 'com'}{a['href']})" for a in soup.find_all(href=True) if "compatible" in a["href"]]
+    product_name = soup.find(class_="pageTitle").get_text()
+    prices = [f"{a.get_text()}" for a in soup.find_all(class_="td__finalPrice")]
+    buy_links = [f"{url.split('com')[0] + 'com'}{a['href']}" for a in soup.find_all(href=True) if a["href"].startswith("/mr/")]
+    vendors = [a.select('img')[0]['alt'].split()[0] for a in soup.find_all(class_='td__logo')]
+    stock = [a.get_text().replace('\n', '') for a in soup.find_all(class_="td__availability td__availability--inStock")]
+    try:
+        index = stock.index('In stock')
+    except ValueError:
+        index = None
+    images = [a["src"] for a in soup.find_all('img', src=True) if "cdna.pcpartpicker.com/static/forever/images/product/" in a["src"]]
+    if len(images) == 0:
+        image = None
+    else:
+        image = f"https:{images[0]}"
+    if index != None:
+        best_price = (prices[index].replace('\n', ''), f"[{vendors[index]}]({buy_links[index]})")
+    else:
+        best_price = None
+
+    return product_name, compatible_links, best_price, image
 
 async def log(bot, command, ctx):
     logs = bot.get_channel(769906608318316594)
@@ -385,7 +313,6 @@ def get_pcpp_posts(url):
 
 
 
-
 def get_pcpp_post(url):
 
     content = []
@@ -410,6 +337,9 @@ def get_pcpp_post(url):
     else:
 
         return 'rate_limited', 'rate_limited'
+
+
+# async def update_db()
 
 
 class PCPartPicker(commands.Cog):
@@ -631,171 +561,102 @@ class PCPartPicker(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        global rate_limited
-        try:
-            if not message.guild.id == 246414844851519490:
-                if rate_limited == '1':
-                    if not message.author.id == 769886576321888256:
-                        if 'https://' and 'pcpartpicker' in message.content:
-                            if not ',updatebuild' in message.content and not ',createbuild' in message.content:
-                                urls = ['https://ae.pcpartpicker.com/list/', 'https://tr.pcpartpicker.com/list/',
-                                        'https://th.pcpartpicker.com/list/', 'https://se.pcpartpicker.com/list/',
-                                        'https://es.pcpartpicker.com/list/', 'https://kr.pcpartpicker.com/list/',
-                                        'https://sg.pcpartpicker.com/list/', 'https://sa.pcpartpicker.com/list/',
-                                        'https://qa.pcpartpicker.com/list/', 'https://pt.pcpartpicker.com/list/',
-                                        'https://pl.pcpartpicker.com/list/', 'https://ph.pcpartpicker.com/list/',
-                                        'https://om.pcpartpicker.com/list/', 'https://no.pcpartpicker.com/list/',
-                                        'https://nl.pcpartpicker.com/list/', 'https://mx.pcpartpicker.com/list/',
-                                        'https://kw.pcpartpicker.com/list/', 'https://jp.pcpartpicker.com/list/',
-                                        'https://it.pcpartpicker.com/list/', 'https://il.pcpartpicker.com/list/',
-                                        'https://ie.pcpartpicker.com/list/W8cdcq', 'https://in.pcpartpicker.com/list/',
-                                        'https://hk.pcpartpicker.com/list/W8cdcq', 'https://de.pcpartpicker.com/list/',
-                                        'https://fr.pcpartpicker.com/list/', 'https://fi.pcpartpicker.com/list/',
-                                        'https://dk.pcpartpicker.com/list/', 'https://ca.pcpartpicker.com/list/',
-                                        'https://br.pcpartpicker.com/list/', 'https://be.pcpartpicker.com/list/',
-                                        'https://bh.pcpartpicker.com/list/', 'https://ar.pcpartpicker.com/list/',
-                                        'https://pcpartpicker.com/list/',
-                                        'https://uk.pcpartpicker.com/list/', 'https://fr.pcpartpicker.com/list/',
-                                        'https://nz.pcpartpicker.com/list/', 'https://au.pcpartpicker.com/list/']
-                                iterations = 0
-                                matches_positions = []
-                                found_url = False
-                                positions = []
-                                ctxurls = []
-                                for i in urls:
-                                    if i in message.content:
-                                        matches = re.finditer(i, message.content)
-                                        matches_positions = [match.start() for match in matches]
-                                    for i in matches_positions:
-                                        positions.append(i)
-                                    matches_positions = []
-                                if len(positions) > 0:
-                                    for i in positions:
-                                        counter = i
-                                        while not f"{message.content[counter]}{message.content[counter + 1]}{message.content[counter + 2]}{message.content[counter + 3]}{message.content[counter + 4]}" == "list/":
-                                            counter = counter + 1
-                                        ctxurls.append(
-                                            message.content[positions[positions.index(i)]:(counter + 11)].replace(' ', ''))
-                                if len(ctxurls) > 0:
-                                    for i in ctxurls:
-                                        theurl = i
-                                        with concurrent.futures.ThreadPoolExecutor() as pool:
-                                            embed_msg, thelist, pricing_breakdown_embed = await asyncio.get_event_loop().run_in_executor(pool, format_link, i, message)
-                                            if not thelist == 'rate_limited':
+        if message.guild != None and message.guild.id == 246414844851519490:
+            return
+        elif message.author.id in (769886576321888256, 785613577066119229):
+            return
+        elif 'updatebuild' in message.content or 'createbuild' in message.content:
+            return
+        if not 'https://' in message.content and not 'pcpartpicker.com/list/' in message.content:
+            return
 
-                                                issues = []
+        '''
+        credit to CorpNewt for this regex: https://github.com/corpnewt/CorpBot.py/blob/rewrite/Cogs/Server.py#L20
+        '''
+        find = re.compile(r"(http|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?")
 
-                                                if 'H510' in thelist or 'H710' in thelist or 'S340' in thelist:
-                                                    issues.append('NZXT cases have limited airflow. Using these cases may result in increased noise and overheating components.')
-                                                if 'QVO' in thelist and 'Samsung' in thelist:
-                                                    issues.append('The Samsung QVO line of SSDs use QLC NAND flash which makes the SSD slow down as it fills up as well as make the SSD have a decreased linespan.')
-                                                if 'Thermaltake Smart' in thelist:
-                                                    issues.append('Thermaltake Smart is a notoriously bad PSU with lacking protections.')
-                                                if 'S12II' in thelist:
-                                                    issues.append('The Seasonic S12II/III are bad power supplies which lack OTP as well as have sleeve bearing fans.')
-                                                if 'System Power 9' in thelist:
-                                                    issues.append('The be quiet! System Power 9 has a sleeve bearing fan which hinders its reliability and lifespan. It also doesn\'t have very well configured OTP.')
-                                                if 'Western Digital Blue' in thelist:
-                                                    issues.append('WD Blue has unknown ECC/wear levelling. Nobody can tell if its good or bad.')
-                                                if 'Hyper 212' in thelist:
-                                                    issues.append('The Hyper 212 EVO has a sleeve bearing fan which hinders its reliability and lifespan. The other Hyper 212\'s have mediocre bearings too.')
-                                                if 'MF120' in thelist:
-                                                    issues.append('The CoolerMaster MF120 fans have bad noise normalized performance as well as mediocre fan bearings.')
-                                                if 'LL120' in thelist or 'LL140' in thelist:
-                                                    issues.append('The Corsair LL120/LL140 fans have bad noise normalized performance as well as mediocre fan bearings.')
-                                                if 'B450M PRO4' in thelist or 'B450 Pro4' in thelist:
-                                                    issues.append('The B450(M) PRO4 has no Load Line Calibration meaning increased voltage droop.')
-                                                if 'Western Digital Green' in thelist:
-                                                    issues.append('WD Green is a DRAMless SSD meaning it can be slower than a hard drive.')
-                                                if 'Kingston A400' in thelist:
-                                                    issues.append('Kingston A400 is a DRAMless SSD meaning it can be slower than a hard drive.')
-                                                if 'Crucial BX500' in thelist:
-                                                    issues.append('The Crucial BX500 is a DRAMless SSD meaning it can be slower than a hard drive.')
-                                                if 'TCSunBow X3' in thelist:
-                                                    issues.append('The TCSunBow X3 has a DRAM lottery meaning some have DRAM and some don\'t. The DRAMless version can be slower than a hard drive.')
-                                                if '1660 Ti' in thelist:
-                                                    issues.append('The GTX 1660 Ti is usually not worth it if the GTX 1660 SUPER is cheaper or the RX 5600 XT is the same price.')
-                                                if 'SPEC-DELTA' in thelist:
-                                                    issues.append('Corsair SPEC-DELTA has bad airflow meaning that using it may result in increased noise and overheating components.')
-                                                if '220T' in thelist:
-                                                    issues.append('The Corsair 220T series of cases (including the airflow version) has poor airflow. Using them may result in increased noise and overheating components.')
-                                                if '275R' in thelist:
-                                                    issues.append('The Corsair 275R series of cases (including the airflow version) has poor airflow. Using them may result in increased noise and overheating components.')
-                                                if 'A320' in thelist:
-                                                    issues.append('Using A320 or A520 motherboards are usually not worth it because of their tendencies to have weak VRMs as well as other disadvantages like no overclocking.')
-                                                if 'VS450' in thelist or 'VS550' in thelist or 'CV450' in thelist or 'CV550' in thelist:
-                                                    issues.append('Corsair VS/CV power supplies are lacking protections and have poor fans.')
-                                                if 'EVGA BR' in thelist or 'EVGA BA' in thelist or 'EVGA BQ' in thelist:
-                                                    issues.append('EVGA BR/BA/BQ power supplies are lacking protections and have ripple issues.')
-                                                if 'WINDFORCE' in thelist:
-                                                    issues.append('Gigabyte WINDFORCE graphics cards have sleeve bearing fans which hinder their reliability and lifespan.')
-                                                if 'Thermaltake' in thelist and 'UX100' in thelist:
-                                                    issues.append('The Thermaltake UX100 is a poor performing CPU cooler.')
-                                                if 'B450M DS3H' in thelist or 'B450M S2H' in thelist:
-                                                    issues.append('The B450M DS3H and S2H have weak VRMs meaning that you may have issues with future upgrades.')
-                                                if 'MasterLiquid' in thelist:
-                                                    issues.append('CM MasterLiquid AIOs have worse performance than similarly priced air coolers and they have leaking issues.')
-                                                if 'Asus PRIME B450' in thelist:
-                                                    issues.append('Asus PRIME B450 motherboards have weak VRMs.')
-                                                if '60 GB' in thelist or '120 GB' in thelist or '60GB' in thelist or '120GB' in thelist or '250 GB' in thelist or '250GB' in thelist or '256GB' in thelist or '256 GB' in thelist or '128GB' in thelist or '128 GB' in thelist:
-                                                    issues.append('Low capacity storage mediums are usually not worth it because of their poor value.')
-                                                if 'Power Supply' in thelist and not '80+' in thelist:
-                                                    issues.append('Unrrated Power Supplies are usually poor performing/have other issues.')
 
-                                                if '1 x 16 GB' in thelist:
-                                                    issues.append('Single channel memory has less bandwidth than dual channel which calls for a significant performance loss.')
-                                                if '1 x 8 GB' in thelist:
-                                                    issues.append('Single channel memory has less bandwidth than dual channel which calls for a significant performance loss.')
-                                                if 'CXM' in thelist:
-                                                    issues.append('CXM uses double forward as a primary topology which is an inefficient design and is likely to whine due to the use of hard switching.')
-                                                if not 'Solid State Drive' in thelist:
-                                                    issues.append('Your list doesn\'t have a Solid State Drive. Having one will speed up your loading times significantly.')
+        matches = [match.group() for match in re.finditer(find, message.content)]
+        urls = []
 
-                                                formattedmessage = await message.channel.send(embed=embed_msg)
-                                                #formattedmessage2 = await message.channel.send(embed=pricing_breakdown_embed)
+        for match in matches:
+            if '/product/' in match:
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    product_name, compatible_links, best_price, image = await asyncio.get_event_loop().run_in_executor(pool, format_product_link, match)
 
-                                                description = ''
+                embed_msg = discord.Embed(
+                    title = product_name,
+                    description = '\n'.join(compatible_links[:7]),
+                    url = match,
+                    colour = green
+                )
+                if best_price != None:
+                    embed_msg.add_field(
+                        name = "Best Price",
+                        value = f"**{best_price[1]}: {best_price[0]}**"
+                    )
+                else:
+                    embed_msg.add_field(
+                        name = "Best Price",
+                        value = f"Product not in stock."
+                    )
+                if image != None:
+                    embed_msg.set_thumbnail(url=image)
+                await message.channel.send(embed=embed_msg)
+                continue
+            if match.endswith("/list") or match.endswith("/list/"):
+                if len(matches) > 1:
+                    continue
+                embed_msg = discord.Embed(
+                    title = "You copied the wrong link for your PCPartPicker list!",
+                    colour = green
+                )
+                embed_msg.set_image(url = "https://imgur.com/a/XrY2ClY")
+                await message.channel.send(message.author.mention, embed=embed_msg)
+                continue
+            urls.append(match)
 
-                                                for i in range(len(issues)):
-                                                    description = f"{description}\n**{i+1}.** {issues[i]}"
+        if len(urls) == 0:
+            return
 
-                                                if not len(issues) == 0:
-                                                    await formattedmessage.add_reaction("⚠")
-                                                    embed_msg = discord.Embed(title=f"Found {len(issues)} potential issue(s) with your list", description=description, timestamp=datetime.utcnow(), colour=green, url=theurl)
+        for url in urls:
 
-                                                    warning = ['⚠']
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                products, total_wattage, total_price, page_title = await asyncio.get_event_loop().run_in_executor(pool, format_pcpp_link, url)
 
-                                                    def check(reaction, user):
-                                                        return user == message.author and str(reaction.emoji) in warning
+            if len(products) == 0:
+                return
 
-                                                    reaction, user = await self.bot.wait_for('reaction_add', check=check)
+            description = '\n'.join([f"**{type}** - [{name}]({url})" if url != None else f"**{type}** - {name}" for type, name, url in products]) + '\n'
+            if len(description) > 1950:
+                description = '\n'.join([f"**{type}** - {name}" for type, name, url in products])[:1950] + '\n'
 
-                                                    await message.author.send(embed=embed_msg)
+            if total_wattage != None:
+                description += f"\n**Estimated Wattage:** {total_wattage}"
+            if total_price != None and len(total_price) > len(products):
+                description += f"\n**Total Price:** {total_price[-1]}"
 
-        except:
-            pass
+            if page_title == "System Builder":
+                page_title = "Parts List"
+
+            embed_msg = discord.Embed(
+                title = page_title,
+                description = description,
+                colour = green,
+                url = url
+            )
+            await message.channel.send(embed=embed_msg)
+
+
     @commands.command()
     async def regions(self, ctx):
-        codes = ['ae', 'tr', 'th', 'se', 'es', 'kr', 'sg', 'sa', 'qa', 'pt', 'pl', 'ph', 'om', 'no', 'nl', 'mx',
-                       'kw',
-                       'jp', 'it', 'il', 'ie', 'in', 'hk', 'de', 'fr', 'fi', 'dk', 'ca', 'br', 'be', 'bh', 'ar', 'us',
-                       'uk',
-                       'fr', 'nz', 'au']
-        countries = ['United Arab Emirates', 'Turkey', 'Thailand', 'Sweden', 'Spain', 'South Korea', 'Singapore',
-                           'Saudi Arabia', 'Qatar', 'Portugal', 'Poland', 'Philippines', 'Oman', 'Norway', 'Netherlands',
-                           'Mexico', 'Kuwait', 'Japan', 'Italy',
-                           'Israel', 'Ireland', 'India', 'Hong Kong', 'Germany', 'France', 'Finland', 'Denmark',
-                           'Canada', 'Brazil', 'Belgium', 'Bahrain', 'Argentina', 'United States', 'United Kingdom',
-                           'France', 'New Zealand', 'Australia']
-
-        description = ''
-        for i in range(0, len(codes) - 1):
-            if description == '':
-                description = f"**{codes[i]}**: {countries[i]}"
-            else:
-                description = f"{description}\n**{codes[i]}**: {countries[i]}"
-        embed_msg = discord.Embed(title="Supported Regions", description=description,
-                                  colour=green, timestamp=datetime.utcnow())
+        description = '\n'.join([f"**{code.upper()}:** {self.bot.countries[code]}" for code in self.bot.countries])
+        embed_msg = discord.Embed(
+            title="Supported Regions",
+            description=description,
+            colour=green,
+            timestamp=datetime.utcnow()
+        )
         await ctx.message.author.send(embed=embed_msg)
         await ctx.message.add_reaction('📨')
 
@@ -1462,7 +1323,34 @@ class PCPartPicker(commands.Cog):
         with open("countries.json", "w") as file:
             file.write(formatted_json)
         bot.countries = country_data
+        bot.urls = [f"https://{reg_code}.pcpartpicker.com" for reg_code in [*self.bot.countries]] + ["https://pcpartpicker.com/list/"]
         await ctx.send(embed=discord.Embed(title="Countries updated", colour=green))
+
+    @commands.group(invoke_without_command=True)
+    async def autopcpp(self, ctx):
+        embed_msg = discord.Embed(
+            title = "Toggle automatic PCPartPicker parts list and product link formatting",
+            description = "Usage: `,autopcpp (enable|disable)`",
+            colour = green
+        )
+        await ctx.send(embed=embed_msg)
+
+    @autopcpp.command()
+    async def enable(self, ctx):
+        embed_msg = discord.Embed(
+            description = "Auto PCPartPicker link formatting is now **enabled**.",
+            colour = green
+        )
+        await ctx.send(embed=embed_msg)
+
+    @autopcpp.command()
+    async def disable(self, ctx):
+        embed_msg = discord.Embed(
+            description = "Auto PCPartPicker link formatting is now **disabled**.",
+            colour = green
+        )
+        await ctx.send(embed=embed_msg)
+
 
 
 def setup(bot):

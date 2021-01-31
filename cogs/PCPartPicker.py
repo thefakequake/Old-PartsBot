@@ -726,7 +726,7 @@ class PCPartPicker(commands.Cog):
             await ctx.send(embed=embed_msg)
 
     @commands.command()
-    async def cases(self, ctx, *, tier=None):
+    async def cases(self, ctx, *, tier="None"):
 
         high_end_aliases = ['highend', 'high end', '1', 'top', 'he', 'best', 'high', 'tier 1', '$$$$', 'high end cases', 'highend cases']
 
@@ -757,7 +757,7 @@ class PCPartPicker(commands.Cog):
         low_end_cases = ''
         budget_cases = ''
 
-        if tier is None:
+        if tier == "None":
 
             embeds = []
 

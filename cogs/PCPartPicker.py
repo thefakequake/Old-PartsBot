@@ -533,6 +533,8 @@ class PCPartPicker(commands.Cog):
 
 
         matches = [match.group() for match in re.finditer(find, message.content)]
+
+
         urls = []
 
         for match in matches:

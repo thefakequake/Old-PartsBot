@@ -853,71 +853,16 @@ class PCPartPicker(commands.Cog):
                                       timestamp=datetime.utcnow())
             await ctx.send(embed=embed_msg)
 
-    # @commands.command()
-    # async def overview(self, ctx, *, part):
-    #     global rate_limited
-    #     if rate_limited == "1":
-    #         embed_msg = discord.Embed(title=f"Finding info for '{part}' on PCPartPicker...", colour=green, timestamp=datetime.utcnow())
-    #         send = await ctx.send(embed=embed_msg)
-    #         with concurrent.futures.ThreadPoolExecutor() as pool:
-    #             productnames, producturls = await asyncio.get_event_loop().run_in_executor(pool, query, part)
-    #         if productnames == "rate_limited":
-    #             db = open("scrapedata.txt", "w")
-    #             db.write("0")
-    #             rate_limited = "0"
-    #             embed_msg = discord.Embed(title="Sorry, it seems like I am being rate limited. Please try again later.", colour=green, timestamp=datetime.utcnow())
-    #             await send.edit(embed=embed_msg)
-    #             quake = self.bot.get_user(405798011172814868)
-    #             await quake.send(f"Captcha Needed, bot down. Command: overview, {part}")
-    #             return
-    #         elif len(productnames) == 0:
-    #             embed_msg = discord.Embed(title=f"No results found for '{part}'.", colour=green, timestamp=datetime.utcnow())
-    #             await send.edit(embed=embed_msg)
-    #         elif not productnames == "rate_limited" and len(productnames) > 0:
-    #             description = '\n'.join([f"{i+1}. [{productnames[i]}]({f'https://pcpartpicker.com{producturls[i]}'})" for i in range(len(productnames))])
-    #             embed_msg = discord.Embed(title=f"Showing results for {part}:", description=description, colour=green)
-    #             embed_msg.set_footer(text="Powered by PCPartPicker")
-    #             await send.edit(embed=embed_msg)
-    #             reactions = ["1\N{variation selector-16}\N{combining enclosing keycap}",
-    #                          "2\N{variation selector-16}\N{combining enclosing keycap}",
-    #                          "3\N{variation selector-16}\N{combining enclosing keycap}",
-    #                          "4\N{variation selector-16}\N{combining enclosing keycap}",
-    #                          "5\N{variation selector-16}\N{combining enclosing keycap}",
-    #                          "6\N{variation selector-16}\N{combining enclosing keycap}",
-    #                          "7\N{variation selector-16}\N{combining enclosing keycap}",
-    #                          "8\N{variation selector-16}\N{combining enclosing keycap}",
-    #                          "9\N{variation selector-16}\N{combining enclosing keycap}",
-    #                          "\N{keycap ten}",
-    #                          "\u274C"]
-    #
-    #             if len(listofchoices) > 10:
-    #                 listofchoices = listofchoices[:9]
-    #
-    #             for i in range(len(listofchoices)):
-    #                 await message.add_reaction(reactions[i])
-    #
-    #             await message.add_reaction(reactions[-1])
-    #
-    #             def check(reaction, user):
-    #                 return user == ctx.message.author and str(reaction.emoji) in reactions
-    #
-    #             reaction, user = await self.bot.wait_for('reaction_add', check=check)
-    #
-    #             if not str(reaction.emoji) == reactions[-1]:
-    #                 item = reactions.index(str(reaction.emoji))
-    #             else:
-    #                 embed_msg = discord.Embed(title=f"Operation Cancelled.", colour=green)
-    #                 embed_msg.set_footer(text="Powered by PCPartPicker")
-    #                 return
-    #     else:
-    #         embed_msg = discord.Embed(title="Sorry, it seems like I am being rate limited. Please try again later.", colour=green, timestamp=datetime.utcnow())
-    #         embed_msg.set_footer(text="Powered by PCPartPicker")
-    #         await ctx.send(embed=embed_msg)
-
-
 
     @commands.command()
     async def refreshcountries(self, ctx):
+        if not ctx.author.id in self.bot.botadmins:
+            embed_msg = discord.Embed(
+                title = "You don't have permission to use that command!",
+                colour = green
+            )
+            await ctx.send(embed=embed_msg)
+            return
         page = requests.get("https://pcpartpicker.com")
         soup = BeautifulSoup(page.content, "html.parser")
         selector = soup.find(class_="select select--small language-selector pp-country-select")
@@ -929,8 +874,8 @@ class PCPartPicker(commands.Cog):
         await ctx.author.send(f"```json\n{formatted_json}```")
         with open("countries.json", "w") as file:
             file.write(formatted_json)
-        bot.countries = country_data
-        bot.urls = [f"https://{reg_code}.pcpartpicker.com" for reg_code in [*self.bot.countries]] + ["https://pcpartpicker.com/list/"]
+        self.bot.countries = country_data
+        self.bot.urls = [f"https://{reg_code}.pcpartpicker.com" for reg_code in [*self.bot.countries]] + ["https://pcpartpicker.com/list/"]
         await ctx.send(embed=discord.Embed(title="Countries updated", colour=green))
 
     @commands.group(invoke_without_command=True)
@@ -976,10 +921,6 @@ class PCPartPicker(commands.Cog):
             colour = green
         )
         await ctx.send(embed=embed_msg)
-
-    @commands.command()
-    async def test(self, ctx):
-        await ctx.send(f"```py\n{self.bot.autopcpp_disabled}```")
 
 
 

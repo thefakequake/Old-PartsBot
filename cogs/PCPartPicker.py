@@ -726,7 +726,7 @@ class PCPartPicker(commands.Cog):
             await ctx.send(embed=embed_msg)
 
     @commands.command()
-    async def cases(self, ctx, *, tier='None'):
+    async def cases(self, ctx, *, tier=None):
 
         high_end_aliases = ['highend', 'high end', '1', 'top', 'he', 'best', 'high', 'tier 1', '$$$$', 'high end cases', 'highend cases']
 
@@ -745,11 +745,10 @@ class PCPartPicker(commands.Cog):
         elif tier.lower() in budget_aliases:
             tier = 3
 
-        conn = await aiosqlite.connect("bot.db")
-        cursor = await conn.execute("SELECT * from cases")
-        info = await cursor.fetchall()
-        await conn.commit()
-        await conn.close()
+        async with aiosqlite.connect("bot.db") as conn:
+            cursor = await conn.execute("SELECT * from cases")
+            info = await cursor.fetchall()
+            await conn.commit()
 
         tiers = ['High End Cases ($$$$)', 'Midrange Cases ($$$)', 'Low End Cases ($$)', 'Budget Cases ($)']
 
@@ -758,7 +757,7 @@ class PCPartPicker(commands.Cog):
         low_end_cases = ''
         budget_cases = ''
 
-        if tier == 'None':
+        if tier is None:
 
             embeds = []
 
@@ -772,7 +771,7 @@ class PCPartPicker(commands.Cog):
                 if case[1] == 4:
                     budget_cases += f'\n{case[0]}'
 
-            descs = [i for i in (high_end_cases, midrange_cases, low_end_cases, budget_cases)]
+            descs = [high_end_cases, midrange_cases, low_end_cases, budget_cases]
 
             for i in range(4):
                 embed_msg = discord.Embed(title=tiers[i], description=descs[i], colour=green, timestamp=datetime.utcnow())
@@ -878,6 +877,7 @@ class PCPartPicker(commands.Cog):
         self.bot.urls = [f"https://{reg_code}.pcpartpicker.com" for reg_code in [*self.bot.countries]] + ["https://pcpartpicker.com/list/"]
         await ctx.send(embed=discord.Embed(title="Countries updated", colour=green))
 
+
     @commands.group(invoke_without_command=True)
     async def autopcpp(self, ctx):
         embed_msg = discord.Embed(
@@ -887,6 +887,8 @@ class PCPartPicker(commands.Cog):
         )
         await ctx.send(embed=embed_msg)
 
+
+    @commands.has_permissions(manage_guild=True)
     @autopcpp.command()
     async def enable(self, ctx):
         if not ctx.guild.id in self.bot.autopcpp_disabled:
@@ -904,6 +906,7 @@ class PCPartPicker(commands.Cog):
         )
         await ctx.send(embed=embed_msg)
 
+    @commands.has_permissions(manage_guild=True)
     @autopcpp.command()
     async def disable(self, ctx):
         if ctx.guild.id in self.bot.autopcpp_disabled:

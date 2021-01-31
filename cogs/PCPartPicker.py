@@ -8,11 +8,9 @@ from discord.ext.commands.cooldowns import BucketType
 from discord.ext import commands, tasks
 import asyncio
 import DiscordUtils
-import math
 import aiosqlite
 import random
 import json
-import string
 
 green = discord.Colour(0x1e807c)
 
@@ -669,10 +667,6 @@ class PCPartPicker(commands.Cog):
 
 
 
-
-
-
-
     @commands.command()
     async def addcase(self, ctx, rank, *, case_name):
         global allowed_ids
@@ -698,6 +692,8 @@ class PCPartPicker(commands.Cog):
             embed_msg = discord.Embed(title=f"You don't have permission to use that command!", colour=green,
                                       timestamp=datetime.utcnow())
             await ctx.send(embed=embed_msg)
+
+
 
     @commands.command()
     async def cases(self, ctx, *, tier="None"):

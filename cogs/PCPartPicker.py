@@ -624,77 +624,51 @@ class PCPartPicker(commands.Cog):
     @commands.command()
     @commands.cooldown(1, 60, commands.BucketType.member)
     async def trends(self, ctx, *, part='cpu'):
+        parts = ['cpu', 'memory', 'monitor', 'power supply', 'storage', 'video card']
 
-        global rate_limited
-
-        if rate_limited == "1":
-            parts = ['cpu', 'memory', 'monitor', 'power supply', 'storage', 'video card']
-
-            if part.lower() in parts:
-
-                url = f"https://pcpartpicker.com/trends/price/{part.replace(' ', '-')}/"
-
-                page = requests.get(url)
-                soup = BeautifulSoup(page.content, 'html.parser')
-
-                images = []
-                titles = []
-
-                realtext = ''
-
-                for a in soup.find_all(class_='pageTitle'):
-                    realtext = a.get_text()
-
-                if not realtext == 'Verification':
-
-                    for img in soup.find_all('img', src=True):
-                        if img['src'].startswith('//cdna.pcpartpicker.com/static/forever/images/trends/'):
-                            images.append(img['src'])
-
-                    for title in soup.find_all(class_='block'):
-                        titles.append(title.get_text().replace(
-                            '\n\nJump Menu\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nJump to price trends for:\n\n\n\n\n',
-                            ''))
-
-                    titles_list = titles[0].split('\n')
-
-                    embeds = []
-
-                    for i in range(len(images)):
-                        embeds.append(discord.Embed(title=f"Price trends for '{part}':", description=titles_list[i], colour=green,
-                                                    timestamp=datetime.utcnow()).set_image(url=f"https:{images[i]}").set_footer(
-                            text=f'Page {i + 1} out of {len(images)}'))
-
-                    paginator = DiscordUtils.Pagination.CustomEmbedPaginator(ctx, timeout=30)
-                    paginator.add_reaction('⏪', "back")
-                    paginator.add_reaction('⏩', "next")
-                    paginator.add_reaction('❌', "lock")
-
-                    await paginator.run(embeds)
-
-                else:
-                    db = open("scrapedata.txt", "w")
-                    db.write("0")
-                    rate_limited = "0"
-                    embed_msg = discord.Embed(
-                        title="Sorry, it seems like I am being rate limited. Please try again later.",
-                        colour=green, timestamp=datetime.utcnow())
-                    await ctx.send(embed=embed_msg)
-                    quake = self.bot.get_user(405798011172814868)
-                    await quake.send(f"Captcha Needed, bot down. Command: trends")
-
-            else:
-                parts_list = "".join([f"- `{s}`\n" for s in parts])
-                embed_msg = discord.Embed(title=f"'{part}' is not a supported part!",
-                                          colour=green,
-                                          timestamp=datetime.utcnow())
-                embed_msg.add_field(name='Supported Parts:', value=parts_list, inline=False)
-                await ctx.send(embed=embed_msg)
-        else:
-            embed_msg = discord.Embed(
-                title="Sorry, it seems like I am being rate limited. Please try again later.",
-                colour=green, timestamp=datetime.utcnow())
+        if not part.lower() in parts:
+            parts_list = "".join([f"- `{s}`\n" for s in parts])
+            embed_msg = discord.Embed(title=f"'{part}' is not a supported part!",
+                                      colour=green,
+                                      timestamp=datetime.utcnow())
+            embed_msg.add_field(name='Supported Parts:', value=parts_list, inline=False)
             await ctx.send(embed=embed_msg)
+            return
+        url = f"https://pcpartpicker.com/trends/price/{part.replace(' ', '-')}/"
+
+        page = requests.get(url)
+        soup = BeautifulSoup(page.content, 'html.parser')
+
+        images = []
+        titles = []
+
+        for img in soup.find_all('img', src=True):
+            if img['src'].startswith('//cdna.pcpartpicker.com/static/forever/images/trends/'):
+                images.append(img['src'])
+
+        for title in soup.find_all(class_='block'):
+            titles.append(title.get_text().replace(
+                '\n\nJump Menu\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nJump to price trends for:\n\n\n\n\n',
+                ''))
+
+        titles_list = titles[0].split('\n')
+
+        embeds = []
+
+        for i in range(len(images)):
+            embeds.append(discord.Embed(title=f"Price trends for '{part}':", description=titles_list[i], colour=green,
+                                        timestamp=datetime.utcnow()).set_image(url=f"https:{images[i]}").set_footer(
+                text=f'Page {i + 1} out of {len(images)}'))
+
+        paginator = DiscordUtils.Pagination.CustomEmbedPaginator(ctx, timeout=30)
+        paginator.add_reaction('⏪', "back")
+        paginator.add_reaction('⏩', "next")
+        paginator.add_reaction('❌', "lock")
+
+        await paginator.run(embeds)
+
+
+
 
 
 

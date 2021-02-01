@@ -3,6 +3,6 @@ aiosqlite
 bs4
 requests
 google_trans_new
-currency_converter
+currencyconverter
 praw
 DiscordUtils

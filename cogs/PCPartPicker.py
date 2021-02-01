@@ -523,6 +523,8 @@ class PCPartPicker(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        if not 'pcpartpicker' in message.content:
+            return
         if message.author.id in (769886576321888256, 785613577066119229):
             return
         elif message.guild != None and message.guild.id in self.bot.autopcpp_disabled:
@@ -542,6 +544,8 @@ class PCPartPicker(commands.Cog):
         urls = []
 
         for match in matches:
+            if not 'pcpartpicker' in match:
+                continue
             if '/product/' in match:
 
                 with concurrent.futures.ThreadPoolExecutor() as pool:
@@ -608,6 +612,8 @@ class PCPartPicker(commands.Cog):
                 colour = green,
                 url = url
             )
+
+
             await message.channel.send(embed=embed_msg)
 
 

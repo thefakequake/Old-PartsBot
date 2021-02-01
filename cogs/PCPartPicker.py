@@ -863,6 +863,7 @@ class PCPartPicker(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     @autopcpp.command()
     async def enable(self, ctx):
+
         if not ctx.guild.id in self.bot.autopcpp_disabled:
             embed_msg = discord.Embed(
                 description="You already have auto PCPartPicker formatting enabled!",
@@ -878,9 +879,11 @@ class PCPartPicker(commands.Cog):
         )
         await ctx.send(embed=embed_msg)
 
+
     @commands.has_permissions(manage_guild=True)
     @autopcpp.command()
     async def disable(self, ctx):
+
         if ctx.guild.id in self.bot.autopcpp_disabled:
             embed_msg = discord.Embed(
                 description="You already have auto PCPartPicker formatting disabled!",

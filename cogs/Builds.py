@@ -106,7 +106,7 @@ class Builds(commands.Cog):
 
 
     @commands.command(aliases=['buildupdate'])
-    async def updatebuild(self, ctx, *, list):
+    async def updatebuild(self, ctx, *, list=None):
 
         async with aiosqlite.connect("bot.db") as conn:
             cursor = await conn.execute("SELECT * from builds WHERE userid IS (?)", (ctx.author.id,))
@@ -230,13 +230,6 @@ class Builds(commands.Cog):
         await ctx.send(embed=embed_msg)
 
 
-    @build.error
-    async def build_error(self, ctx, error):
-        if isinstance(error, commands.MemberNotFound):
-            embed_msg = discord.Embed(title="Member not found", description="Is their name case sensitive? Try capitalizing their name.",
-                                      timestamp=datetime.utcnow(), colour=red)
-            await ctx.send(embed=embed_msg)
-        print(error)
 
 def setup(bot):
     bot.add_cog(Builds(bot))

@@ -89,7 +89,7 @@ class Bot(commands.Cog):
         embed_msg = discord.Embed(title="About PartsBot",
                                   description="PartsBot was created by QuaKe#5943.\nPartsBot scrapes [PCPartPicker](https://pcpartpicker.com/) and is programmed in Python with the [discord.py](https://github.com/Rapptz/discord.py) API wrapper.\n\n[Invite Link](https://discord.com/api/oauth2/authorize?client_id=769886576321888256&permissions=0&scope=bot) • [Official Discord Server](https://discord.gg/WM9pHp8) • [Patreon](https://patreon.com/partsbot) • [GitHub](https://github.com/QuaKe8782/PartsBot) • [DBL](https://discordbotlist.com/bots/partsbot) • [top.gg](https://top.gg/bot/769886576321888256)\n\nSpecial thanks to Bogdan, Duck Dude, Zorf, Ozone and John Benber.\nShout out to Grxffiti.",
                                   timestamp=datetime.utcnow(), colour=red)
-        embed_msg.set_thumbnail(url="https://media.discordapp.net/attachments/785609243675721739/798912390053363732/logo-bg.png")
+        embed_msg.set_thumbnail(url=f"https://cdn.discordapp.com/avatars/{self.bot.user.id}/{self.bot.user.avatar}.png?size=1024")
         await ctx.send(embed=embed_msg)
 
         
@@ -100,23 +100,6 @@ class Bot(commands.Cog):
         embed_msg = discord.Embed(title="Ping", description=f"{int(self.bot.latency * 1000)}ms", colour=red,
                                   timestamp=datetime.utcnow())
         await ctx.send(embed=embed_msg)
-
-
-
-
-    @commands.command(description='unlocks PCPP commands.')
-    async def unlock(self, ctx):
-        await log(self.bot, 'unlock', ctx)
-        if ctx.message.author.id == 405798011172814868:
-            db = open("scrapedata.txt", "w")
-            db.write("1")
-            await ctx.message.add_reaction('✅')
-        else:
-            embed_msg = discord.Embed(title="You don't have permission to do that!",
-                                      colour=red, timestamp=datetime.utcnow())
-            await ctx.send(embed=embed_msg)
-
-
 
 
 

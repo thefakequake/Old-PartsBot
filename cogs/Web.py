@@ -1007,11 +1007,46 @@ class Web(commands.Cog):
             embed_msg.set_footer(text="Powered by apex.tracker.gg")
             await ctx.send(embed=embed_msg)
 
-
-
-
-
-
+    @commands.command()
+    async def bytebench(self, ctx, product_type, product1, *, product2):
+        if not product_type.lower() in ("cpu", "gpu"):
+            embed_msg = discord.Embed(title="Invalid product type!", description="Make sure you format your command like this:\n```,bytebench (cpu or gpu) (product_1) (product_2)```", colour=red)
+            await ctx.send(embed=embed_msg)
+            return
+        response = requests.get(f"http://bytebenchmark-beta.tk/api/v1/{product_type}/{product1}/{product2}")#
+        data = json.loads(response.content)
+        if response.status_code == 200:
+            product_obj1, product_obj2 = data[0], data[1]
+            embed_msg = discord.Embed(
+                title = f"{product_obj1['itemName']} vs {product_obj2['itemName']}",
+                colour = red
+            )
+            if int(product_obj1["gameBenchmarkScore"]) > int(product_obj2["gameBenchmarkScore"]):
+                products = (product_obj1, product_obj2)
+            else:
+                products = (product_obj2, product_obj1)
+            embed_msg.add_field(
+                name = "Gaming",
+                value = f"{products[0]['itemName']} wins by **{round(((int(products[0]['gameBenchmarkScore']) / int(products[1]['gameBenchmarkScore'])) - 1) * 100, 1)}%**",
+                inline = False
+            )
+            if int(product_obj1["workstationBenchmarkScore"]) > int(product_obj2["workstationBenchmarkScore"]):
+                products = (product_obj1, product_obj2)
+            else:
+                products = (product_obj2, product_obj1)
+            embed_msg.add_field(
+                name = "Workstation",
+                value = f"{products[0]['itemName']} wins by **{round(((int(products[0]['workstationBenchmarkScore']) / int(products[1]['workstationBenchmarkScore'])) - 1) * 100, 1)}%**",
+                inline = False
+            )
+            embed_msg.set_thumbnail(url=products[0]["itemImageUrl"])
+            await ctx.send(embed=embed_msg)
+        if "does" in str(data):
+            embed_msg = discord.Embed(
+                title = f"'{data['error'].split(' does')[0]}' is not a valid {product_type.upper()}!",
+                colour=red
+            )
+            await ctx.send(embed=embed_msg)
 
 def setup(bot):
     bot.add_cog(Web(bot))

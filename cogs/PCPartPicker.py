@@ -784,7 +784,12 @@ class PCPartPicker(commands.Cog):
             def check(reaction, user):
                 return user == ctx.message.author and str(reaction.emoji) == "❌"
 
-            reaction, user = await self.bot.wait_for('reaction_add', check=check)
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', check=check)
+            except:
+                embed_msg = discord.Embed(title="Timed out", colour=red)
+                await ctx.send(embed=embed_msg)
+                return
 
             await message.delete()
 

@@ -148,8 +148,12 @@ class Web(commands.Cog):
 
             def check(message):
                 return len(message.content) > 0 and message.content[0] == ',' and message.channel == ctx.message.channel
-
-            message = await self.bot.wait_for('message', check=check)
+            try:
+                message = await self.bot.wait_for('message', check=check, timeout=60)
+            except asyncio.TimeoutError:
+                embed_msg = discord.Embed(title="Timed out", colour=red)
+                await ctx.send(embed=embed_msg)
+                return
             try:
                 item = int(message.content[1:]) - 1
             except ValueError:
@@ -221,8 +225,12 @@ class Web(commands.Cog):
 
                 def check(reaction, user):
                     return user == ctx.message.author and str(reaction.emoji) in reactions
-
-                reaction, user = await self.bot.wait_for('reaction_add', check=check)
+                try:
+                    reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=60)
+                except asyncio.TimeoutError:
+                    embed_msg = discord.Embed(title="Timed out", colour=red)
+                    await ctx.send(embed=embed_msg)
+                    return
                 if str(reaction.emoji) == one:
                     item = 0
                 if str(reaction.emoji) == two:
@@ -411,7 +419,13 @@ class Web(commands.Cog):
             def check(reaction, user):
                 return user == ctx.message.author and str(reaction.emoji) in reactions
 
-            reaction, user = await self.bot.wait_for('reaction_add', check=check)
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=60)
+            except asyncio.TimeoutError:
+                embed_msg = discord.Embed(title="Timed out", colour=red)
+                await ctx.send(embed=embed_msg)
+                return
+
             if str(reaction.emoji) == one:
                 item = 0
             if str(reaction.emoji) == two:
@@ -509,7 +523,12 @@ class Web(commands.Cog):
         def check(reaction, user):
             return user == ctx.message.author and str(reaction.emoji) in reactions
 
-        reaction, user = await self.bot.wait_for('reaction_add', check=check)
+        try:
+            reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=60)
+        except asyncio.TimeoutError:
+            embed_msg = discord.Embed(title="Timed out", colour=red)
+            await ctx.send(embed=embed_msg)
+            return
 
         item = 0
 
@@ -605,7 +624,12 @@ class Web(commands.Cog):
                 def check(reaction, user):
                     return user == ctx.message.author and str(reaction.emoji) in reactions
 
-                reaction, user = await self.bot.wait_for('reaction_add', check=check)
+                try:
+                    reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=60)
+                except asyncio.TimeoutError:
+                    embed_msg = discord.Embed(title="Timed out", colour=red)
+                    await ctx.send(embed=embed_msg)
+                    return
 
                 if not str(reaction.emoji) == reactions[-1]:
                     item2 = reactions.index(str(reaction.emoji))
@@ -752,7 +776,12 @@ class Web(commands.Cog):
                 def check(reaction, user):
                     return user == ctx.message.author and str(reaction.emoji) in reactions
 
-                reaction, user = await self.bot.wait_for('reaction_add', check=check)
+                try:
+                    reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=60)
+                except asyncio.TimeoutError:
+                    embed_msg = discord.Embed(title="Timed out", colour=red)
+                    await ctx.send(embed=embed_msg)
+                    return
 
                 if not str(reaction.emoji) == reactions[-1]:
                     item = reactions.index(str(reaction.emoji))

@@ -35,11 +35,18 @@ bot.reactions = ["1\N{variation selector-16}\N{combining enclosing keycap}",
                  "8\N{variation selector-16}\N{combining enclosing keycap}",
                  "9\N{variation selector-16}\N{combining enclosing keycap}",
                  "\N{keycap ten}",
-                 "\u274C"]
+                 "\u274C"]  
 
 bot.countries = country_data
-
+bot.urls = [f"https://{reg_code}.pcpartpicker.com/list/" for reg_code in [*bot.countries]] + ["https://pcpartpicker.com/list/"]
 bot.botadmins = [287256464047865857, 405798011172814868]
+
+async def unpack_db():
+    async with aiosqlite.connect("bot.db") as conn:
+        cursor = await conn.execute("SELECT * FROM autopcpp")
+        data = await cursor.fetchall()
+        await conn.commit()
+    bot.autopcpp_disabled = [serverid[0] for serverid in data]
 
 @bot.event
 async def on_ready():
@@ -47,25 +54,27 @@ async def on_ready():
     if bot.user.id == 785613577066119229:
         bannedcogs = ['News', 'Poll']
     print('PartsBot is starting...')
+    await unpack_db()
     for filename in os.listdir("cogs"):
         if filename.endswith(".py") and not filename.replace('.py', '') in bannedcogs:
             name = filename.replace(".py", "")
             bot.load_extension(f"cogs.{name}")
             print(f"cogs.{name} loaded")
     print("PartsBot is ready.")
+
     channel = bot.get_channel(769906608318316594)
     embed_msg = discord.Embed(title="Bot restarted.", colour=green, timestamp=datetime.utcnow())
     await channel.send(embed=embed_msg)
     while True:
         await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=",help"))
-        await asyncio.sleep(60)
+        await asyncio.sleep(120)
         await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(bot.guilds)} servers."))
-        await asyncio.sleep(30)
+        await asyncio.sleep(60)
         members = 0
         for guild in bot.guilds:
             members += guild.member_count
         await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{members} users."))
-        await asyncio.sleep(30)
+        await asyncio.sleep(60)
 
 
 @bot.command()
@@ -196,11 +205,12 @@ async def on_command_error(ctx, error):
             embed_msg = discord.Embed(title=f"Command '{command[0]}' not found.", description=f'Perhaps you meant \'**{highest[0]}**\'.', timestamp=datetime.utcnow(), colour=green)
             await ctx.send(embed=embed_msg)
         return
-    if isinstance(error, commands.MissingPermissions):
-        embed_msg = discord.Embed(title="Missing Permissions!", description=str(error), timestamp=datetime.utcnow(), colour=green)
+    if isinstance(error, commands.MemberNotFound):
+        embed_msg = discord.Embed(title="Member not found", description="I was unable to find that member. Make sure you are spelling their name correctly.", colour=green)
         await ctx.send(embed=embed_msg)
         return
-    embed_msg = discord.Embed(title="Oops! Something went wrong...", description="Looks like I've encountered an error. I have sent a bug report to the [PartsBot Discord](https://discord.gg/WM9pHp8).", colour=green)
+    embed_msg = discord.Embed(title="Oops! Something went wrong...", description="Looks like I've encountered an error.\nI have sent a bug report to the [PartsBot Discord](https://discord.gg/WM9pHp8).", colour=green)
+    await ctx.send(embed=embed_msg)
     channel = bot.get_channel(773989689060229180)
     embed_msg = discord.Embed(title=f"Error: {str(error)}", description=f"**Text:**\n{ctx.message.content}\n\n**User ID:**\n{ctx.author.id}\n\n**Full Details:**\n{str(ctx.message)}", colour=error_colour, timestamp=datetime.utcnow())
     await channel.send(embed=embed_msg)

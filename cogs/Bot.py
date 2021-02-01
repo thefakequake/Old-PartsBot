@@ -61,12 +61,6 @@ class Bot(commands.Cog):
     @commands.command(description='sends various bot statistics.')
     @commands.cooldown(1, 5, commands.BucketType.member)
     async def stats(self, ctx):
-        db = open("scrapedata.txt", "r")
-        data = db.read()
-        if data == '1':
-            ratelimited = "False"
-        else:
-            ratelimited = "True"
         global last_restarted
         servers = len(self.bot.guilds)
         members = 0
@@ -78,7 +72,7 @@ class Bot(commands.Cog):
             if not str(command.name) in private_commands:
                 commands_amount += 1
         embed_msg = discord.Embed(title="Bot Stats",
-                                  description=f"**Total server count:** {servers}\n**Total member count of servers:** {members}\n**Total public commands:** {commands_amount}\n**Total hidden commands:** {len(private_commands)}\n**PCPP rate limited?:** {ratelimited}\n**Bot ping:** {int(self.bot.latency * 1000)}ms\n**Bot last restarted:** {last_restarted.replace(microsecond=0)} GMT",
+                                  description=f"**Total server count:** {servers}\n**Total member count of servers:** {members}\n**Total public commands:** {commands_amount}\n**Total hidden commands:** {len(private_commands)}\n**Bot ping:** {int(self.bot.latency * 1000)}ms\n**Bot last restarted:** {last_restarted.replace(microsecond=0)} GMT",
                                   timestamp=datetime.utcnow(), colour=red)
         await ctx.send(embed=embed_msg)
 

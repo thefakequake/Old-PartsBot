@@ -149,7 +149,9 @@ def format_product_link(url):
     prices = [f"{a.get_text()}" for a in soup.find_all(class_="td__finalPrice")]
     buy_links = [f"{url.split('com')[0] + 'com'}{a['href']}" for a in soup.find_all(href=True) if a["href"].startswith("/mr/")]
     vendors = [a.select('img')[0]['alt'] for a in soup.find_all(class_='td__logo')]
-    stock = [a.get_text().replace('\n', '') for a in soup.find_all(class_="td__availability td__availability--inStock")]
+    stock = [a.get_text().replace('\n', '') for a in soup.find_all(class_="td__availability")]
+
+
     try:
         index = stock.index('In stock')
     except ValueError:
@@ -165,6 +167,8 @@ def format_product_link(url):
         best_price = None
 
     return product_name, compatible_links, best_price, image
+
+
 
 async def log(bot, command, ctx):
     logs = bot.get_channel(769906608318316594)

@@ -209,11 +209,11 @@ async def on_command_error(ctx, error):
         embed_msg = discord.Embed(title="Member not found", description="I was unable to find that member. Make sure you are spelling their name correctly.", colour=green)
         await ctx.send(embed=embed_msg)
         return
-    embed_msg = discord.Embed(title="Oops! Something went wrong...", description="Looks like I've encountered an error.\nI have sent a bug report to the [PartsBot Discord](https://discord.gg/WM9pHp8).", colour=green)
+    embed_msg = discord.Embed(title="Oops! Something went wrong...", description="Looks like I've encountered an error.\nI have sent a bug report to the [PartsBot Discord](https://discord.gg/WM9pHp8).\nIf you see this often, please report it in the Discord.", colour=green)
     await ctx.send(embed=embed_msg)
     channel = bot.get_channel(773989689060229180)
     embed_msg = discord.Embed(title=f"Error: {str(error)}", description=f"**Text:**\n{ctx.message.content}\n\n**User ID:**\n{ctx.author.id}\n\n**Full Details:**\n{str(ctx.message)}", colour=error_colour, timestamp=datetime.utcnow())
-    await channel.send(embed=embed_msg)
+    await channel.send("<@405798011172814868>", embed=embed_msg)
     raise error
 
 
@@ -231,11 +231,13 @@ async def on_guild_join(guild):
                                     value='''
 
                 - Sending a PCPartPicker list
+                - Sending a PCParPicker product list
                 - Doing `,partspecs [name of part]`
                 - Doing `,partprice [name of part]`
                 - Doing `,randompost`
                 If you need additional help, join the [Offical Discord](https://discord.gg/WM9pHp8) or contact **QuaKe#5943**.
                 Enjoying PartsBot? Consider supporting our work on [Patreon](https://www.patreon.com/partsbot).
+                Don't like auto PCPartPicker link formatting? Use the command `,autopcpp disable`.
                 ''')
                 await channel.send(embed=embed_msg)
                 worked = True

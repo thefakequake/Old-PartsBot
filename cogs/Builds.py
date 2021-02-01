@@ -19,7 +19,7 @@ class Builds(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(aliases=['buildcreate'])
+    @commands.command(aliases=['buildcreate'], description="Creates a build and saves it. You can view your build or another member's build with the ,build command.")
     async def createbuild(self, ctx, *, list=None):
 
         async with aiosqlite.connect("bot.db") as conn:
@@ -105,7 +105,7 @@ class Builds(commands.Cog):
         return
 
 
-    @commands.command(aliases=['buildupdate'])
+    @commands.command(aliases=['buildupdate', 'buildedit', 'editbuild'], description="Edits your build.")
     async def updatebuild(self, ctx, *, list=None):
 
         async with aiosqlite.connect("bot.db") as conn:
@@ -191,7 +191,7 @@ class Builds(commands.Cog):
         return
 
 
-    @commands.command()
+    @commands.command(description="Sends your or another member's build in chat.")
     async def build(self, ctx, *, member: Member = None):
 
         user = ctx.author

@@ -10,17 +10,6 @@ async def createbotdb():
                     tier integer
                     )""")
 
-    cursor = await conn.execute("""CREATE TABLE subscriptions (
-                    guildid text,
-                    newsid text,
-                    salesid integer
-                    )""")
-
-    cursor = await conn.execute("""CREATE TABLE builds (
-                    userid integer,
-                    buildcontent text,
-                    pcpp text
-                    )""")
 
     await conn.commit()
     await conn.close()
@@ -47,13 +36,5 @@ credentials.close()
 
 print('credentials.json created - you\'ll have to fill in these credentials yourself.')
 
-
-
-scrapedata = open("scrapedata.txt", "x")
-scrapedata.close()
-scrapedata = open("scrapedata.txt", "w")
-scrapedata.write("1")
-
-print('scrapedata.txt created')
 
 print('all files formatted and ready - contact QuaKe#5943 on discord if you need extra help')

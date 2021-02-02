@@ -48,6 +48,8 @@ async def unpack_db():
         await conn.commit()
     bot.autopcpp_disabled = [serverid[0] for serverid in data]
 
+
+
 @bot.event
 async def on_ready():
     bannedcogs = []
@@ -207,6 +209,12 @@ async def on_command_error(ctx, error):
         return
     if isinstance(error, commands.MemberNotFound):
         embed_msg = discord.Embed(title="Member not found", description="I was unable to find that member. Make sure you are spelling their name correctly.", colour=green)
+        await ctx.send(embed=embed_msg)
+        return
+    if isinstance(error, commands.MissingPermissions):
+        embed_msg = discord.Embed(title="You don't have permission to use that command!",
+                                  description=str(error),
+                                  colour=green)
         await ctx.send(embed=embed_msg)
         return
     embed_msg = discord.Embed(title="Oops! Something went wrong...", description="Looks like I've encountered an error.\nI have sent a bug report to the [PartsBot Discord](https://discord.gg/WM9pHp8).\nIf you see this often, please report it in the Discord.", colour=green)

@@ -143,6 +143,13 @@ def format_product_link(url):
     page = requests.get(url)
     soup = BeautifulSoup(page.content, "html.parser")
 
+    rating = None
+    for a in soup.find_all(class_="product--rating list-unstyled"):
+        text = a.get_text()
+        if not 'Ratings' in text:
+            continue
+        print(text)
+        rating = text.strip().strip('()')
     compatible_links = [f"[{a.get_text()}]({url.split('com')[0] + 'com'}{a['href']})" for a in soup.find_all(href=True) if "compatible" in a["href"]]
     compatible_links = list(dict.fromkeys(compatible_links))
     product_name = soup.find(class_="pageTitle").get_text()
@@ -166,7 +173,7 @@ def format_product_link(url):
     else:
         best_price = None
 
-    return product_name, compatible_links, best_price, image
+    return product_name, compatible_links, best_price, image, rating
 
 
 
@@ -549,11 +556,16 @@ class PCPartPicker(commands.Cog):
             if '/product/' in match:
 
                 with concurrent.futures.ThreadPoolExecutor() as pool:
-                    product_name, compatible_links, best_price, image = await asyncio.get_event_loop().run_in_executor(pool, format_product_link, match)
+                    product_name, compatible_links, best_price, image, rating = await asyncio.get_event_loop().run_in_executor(pool, format_product_link, match)
+
+                if rating is None:
+                    description = 'No ratings.' + '\n\n' + '\n'.join(compatible_links[:3])
+                else:
+                    description = rating + '\n\n' + '\n'.join(compatible_links[:3])
 
                 embed_msg = discord.Embed(
                     title = product_name,
-                    description = '\n'.join(compatible_links[:7]),
+                    description = description,
                     url = match,
                     colour = green
                 )
@@ -826,7 +838,7 @@ class PCPartPicker(commands.Cog):
                     found = True
             if found is True:
                 conn = await aiosqlite.connect("bot.db")
-                cursor = await conn.execute(f"DELETE FROM cases WHERE name = '{case_name}'")
+                cursor = await conn.execute(f"DELETE FROM cases WHERE name = ?", (case_name,))
                 await conn.commit()
                 await conn.close()
                 embed_msg = discord.Embed(title=f"Deleted case '{case_name}'.", colour=green, timestamp=datetime.utcnow())

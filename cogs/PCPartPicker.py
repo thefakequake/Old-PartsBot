@@ -148,7 +148,6 @@ def format_product_link(url):
         text = a.get_text()
         if not 'Ratings' in text:
             continue
-        print(text)
         rating = text.strip().strip('()')
     compatible_links = [f"[{a.get_text()}]({url.split('com')[0] + 'com'}{a['href']})" for a in soup.find_all(href=True) if "compatible" in a["href"]]
     compatible_links = list(dict.fromkeys(compatible_links))

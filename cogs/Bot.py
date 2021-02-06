@@ -36,7 +36,7 @@ class Bot(commands.Cog):
                         desc = f"{desc}\n**{command}**"
                     desc += f"\n{', '.join([f'`{command}`' for command in list(commands[command])])}"
                 embed_msg = discord.Embed(title="Commands",
-                                          description=f"Use `,help [command name]` to get more information on a specific command.\n{desc}\n\nIf you need extra help, join the [Official Discord](https://discord.gg/WM9pHp8) or contact **QuaKe#5943**.",
+                                          description=f"Use `,help [command name]` to get more information on a specific command.\n{desc}\n\nIf you need extra help, join the [Official Discord](https://discord.gg/WM9pHp8) or contact **QuaKe#9535**.",
                                           timestamp=datetime.utcnow(), colour=red, url="https://discord.gg/xxzKRtm4nk")
                 await ctx.send(embed=embed_msg)
             else:
@@ -81,7 +81,7 @@ class Bot(commands.Cog):
     @commands.command(description='sends bot information including invite link, official discord and credits.')
     async def info(self, ctx):
         embed_msg = discord.Embed(title="About PartsBot",
-                                  description="PartsBot was created by QuaKe#5943.\nPartsBot scrapes [PCPartPicker](https://pcpartpicker.com/) and is programmed in Python with the [discord.py](https://github.com/Rapptz/discord.py) API wrapper.\n\n[Invite Link](https://discord.com/api/oauth2/authorize?client_id=769886576321888256&permissions=0&scope=bot) • [Official Discord Server](https://discord.gg/WM9pHp8) • [Patreon](https://patreon.com/partsbot) • [GitHub](https://github.com/QuaKe8782/PartsBot) • [DBL](https://discordbotlist.com/bots/partsbot) • [top.gg](https://top.gg/bot/769886576321888256)\n\nSpecial thanks to CorpNewt (for his regex), Bogdan, Duck Dude, Zorf, Ozone and John Benber.\nShout out to Grxffiti.",
+                                  description="PartsBot was created by QuaKe#9535.\nPartsBot scrapes [PCPartPicker](https://pcpartpicker.com/) and is programmed in Python with the [discord.py](https://github.com/Rapptz/discord.py) API wrapper.\n\n[Invite Link](https://discord.com/api/oauth2/authorize?client_id=769886576321888256&permissions=0&scope=bot) • [Official Discord Server](https://discord.gg/WM9pHp8) • [Patreon](https://patreon.com/partsbot) • [GitHub](https://github.com/QuaKe8782/PartsBot) • [DBL](https://discordbotlist.com/bots/partsbot) • [top.gg](https://top.gg/bot/769886576321888256)\n\nSpecial thanks to CorpNewt (for his regex), Bogdan, Duck Dude, Zorf, Ozone and John Benber.\nShout out to Grxffiti.",
                                   timestamp=datetime.utcnow(), colour=red)
         embed_msg.set_thumbnail(url=f"https://cdn.discordapp.com/avatars/{self.bot.user.id}/{self.bot.user.avatar}.png?size=1024")
         await ctx.send(embed=embed_msg)

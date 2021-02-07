@@ -74,7 +74,10 @@ class Poll(commands.Cog):
                 send = await ctx.send(embed=embed_msg)
                 await send.add_reaction('👍')
                 await send.add_reaction('👎')
-                await ctx.message.delete()
+                try:
+                    await ctx.message.delete()
+                except:
+                    pass
 
     @commands.command(description='chooses yes or no for your questions.')
     async def choice(self, ctx):

@@ -13,11 +13,11 @@ import random
 import json
 
 green = discord.Colour(0x1e807c)
-
+headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36 Edg/88.0.705.63'}
 allowed_ids = [405798011172814868, 370611001948635157, 287256464047865857, 454186048721780751, 191280151084924928, 698634807143563424, 411274336847134730, 479319375149662209, 750353117698064497, 629736214345416734, 746775313593270352]
 
 def query(search_term):
-    page = requests.get(f"https://pcpartpicker.com/search/?q={search_term}")
+    page = requests.get(f"https://pcpartpicker.com/search/?q={search_term}", headers=headers)
     soup = BeautifulSoup(page.content, 'html.parser')
     product_name = soup.find(class_='pageTitle').get_text()
     if product_name != 'Product Search': # if the search query redirects straight to a product page
@@ -39,7 +39,7 @@ def get_specs(url):
     spec_values = []
     images = []
 
-    page = requests.get(url)
+    page = requests.get(url, headers=headers)
     soup = BeautifulSoup(page.content, 'html.parser')
     product_name = soup.find(class_='pageTitle').get_text()
     for img in soup.find_all('img', src=True):
@@ -64,7 +64,7 @@ def get_specs(url):
 
 
 def get_price(url):
-    page = requests.get(url)
+    page = requests.get(url, headers=headers)
     soup = BeautifulSoup(page.content, 'html.parser')
     page_title = soup.find(class_='pageTitle').get_text()
     prices = []
@@ -98,7 +98,7 @@ def format_pcpp_link(url):
     producturls = []
     productnames = []
 
-    page = requests.get(url)
+    page = requests.get(url, headers=headers)
     soup = BeautifulSoup(page.content, 'html.parser')
 
 
@@ -140,7 +140,7 @@ def format_pcpp_link(url):
 
 def format_product_link(url):
 
-    page = requests.get(url)
+    page = requests.get(url, headers=headers)
     soup = BeautifulSoup(page.content, "html.parser")
 
     rating = None
@@ -184,7 +184,7 @@ async def log(bot, command, ctx):
 
 def get_build_guides(url):
 
-    page = requests.get(url)
+    page = requests.get(url, headers=headers)
     soup = BeautifulSoup(page.content, 'html.parser')
 
     realtext = ''
@@ -212,7 +212,7 @@ def get_build_guides(url):
 
 
 def get_build(url):
-    page = requests.get(url)
+    page = requests.get(url, headers=headers)
     soup = BeautifulSoup(page.content, 'html.parser')
 
     realtext = ''
@@ -268,7 +268,7 @@ def get_pcpp_subforums():
     links = []
     titles = []
 
-    page = requests.get(f"https://pcpartpicker.com/forums/")
+    page = requests.get(f"https://pcpartpicker.com/forums/", headers=headers)
 
     soup = BeautifulSoup(page.content, 'html.parser')
 
@@ -293,7 +293,7 @@ def get_pcpp_subforums():
 
 def get_pcpp_posts(url):
 
-    page = requests.get(url)
+    page = requests.get(url, headers=headers)
     links = []
     titles = []
     description = ''
@@ -326,7 +326,7 @@ def get_pcpp_post(url):
 
     content = []
     details = []
-    page = requests.get(url)
+    page = requests.get(url, headers=headers)
 
     soup = BeautifulSoup(page.content, 'html.parser')
 
@@ -657,7 +657,7 @@ class PCPartPicker(commands.Cog):
             return
         url = f"https://pcpartpicker.com/trends/price/{part.replace(' ', '-')}/"
 
-        page = requests.get(url)
+        page = requests.get(url, headers=headers)
         soup = BeautifulSoup(page.content, 'html.parser')
 
         images = []
@@ -860,7 +860,7 @@ class PCPartPicker(commands.Cog):
             )
             await ctx.send(embed=embed_msg)
             return
-        page = requests.get("https://pcpartpicker.com")
+        page = requests.get("https://pcpartpicker.com", headers=headers)
         soup = BeautifulSoup(page.content, "html.parser")
         selector = soup.find(class_="select select--small language-selector pp-country-select")
         slices = [slice for slice in str(selector).split('\n') if not "<select" in slice and not "</select" in slice]

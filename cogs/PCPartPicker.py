@@ -366,7 +366,7 @@ class PCPartPicker(commands.Cog):
         self.bot = bot
 
     @commands.command(aliases=['specs', 'ps', 's'], description='shows detailed specs for a part via search query. if multiple results are returned, user must react with appropriate emoji to get the desired term.')
-    @commands.cooldown(2, 60, commands.BucketType.member)
+    @commands.cooldown(2, 120, commands.BucketType.member)
     async def partspecs(self, ctx, *, search_term):
         await log(self.bot, 'partspecs', ctx)
         embed_msg = discord.Embed(title=f"Finding specs for '{search_term}' on PCPartPicker...", timestamp=datetime.utcnow(), colour=green)
@@ -436,7 +436,7 @@ class PCPartPicker(commands.Cog):
 
 
     @commands.command(aliases=['pp', 'p', 'price'], description='shows the cheapest price for a part via search query (if the part is available). put the country\'s alpha-2 code (e.g. uk, fr, es) if you wish to see pricing in other regions. only works for supported countries on pcpartpicker. use ,regions to see a full list of supported regions as well as their alpha-2 codes.')
-    @commands.cooldown(2, 60, commands.BucketType.member)
+    @commands.cooldown(2, 120, commands.BucketType.member)
     async def partprice(self, ctx, region, *, search_term=None):
         countries = [*self.bot.countries]
         await log(self.bot, 'partprice', ctx)

@@ -13,7 +13,7 @@ import random
 import json
 
 green = discord.Colour(0x1e807c)
-headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36 Edg/88.0.705.63'}
+headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36 Edg/88.0.705.63', 'cookie': 'xsessionid=8gxgh7l25gwr276aregdd4qnj7zhmxwb; xcsrftoken=o7wXfkFMvIMf5SKShBaC4E0KJ7anQ1mdzHuZ4G6sWwMH2gSbcsZn5YdneEKo8fiv; xgdpr-consent=allow; __cfduid=d8b6350b0033bccdde51da015aaf07f381611344324; cf_clearance=d8b834d4bd7bf761c45622d38c027bc6e0d93f24-1612772344-0-150'}
 allowed_ids = [405798011172814868, 370611001948635157, 287256464047865857, 454186048721780751, 191280151084924928, 698634807143563424, 411274336847134730, 479319375149662209, 750353117698064497, 629736214345416734, 746775313593270352]
 
 def query(search_term):

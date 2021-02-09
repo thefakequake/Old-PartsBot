@@ -291,7 +291,7 @@ class PCPartPicker(commands.Cog):
 
     @tasks.loop(seconds=random.uniform(5.0, 10.0))
     async def dequeue_urls(self):
-        if not self.bot.rate_limited:
+        if self.bot.rate_limited:
             return
         if len(self.bot.queued_lists) > 0:
             self.dequeue_urls.change_interval(seconds=random.uniform(5.0, 10.0))

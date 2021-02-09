@@ -6,3 +6,4 @@ google_trans_new
 currencyconverter
 praw
 DiscordUtils
+pypartpicker

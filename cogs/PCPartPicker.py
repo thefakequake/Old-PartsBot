@@ -102,6 +102,7 @@ async def log(bot, command, ctx):
     await logs.send(embed=embed_msg)
 
 
+
 def get_build_guides(url):
 
     page = requests.get(url, headers=headers)
@@ -290,6 +291,8 @@ class PCPartPicker(commands.Cog):
 
     @tasks.loop(seconds=random.uniform(5.0, 10.0))
     async def dequeue_urls(self):
+        if not self.bot.rate_limited:
+            return
         if len(self.bot.queued_lists) > 0:
             self.dequeue_urls.change_interval(seconds=random.uniform(5.0, 10.0))
         else:
@@ -300,7 +303,12 @@ class PCPartPicker(commands.Cog):
 
         pcpp = Scraper()
 
-        pcpp_list = pcpp.fetch_list(list_item[0])
+        try:
+            pcpp_list = pcpp.fetch_list(list_item[0])
+        except pypartpicker.Verification as error:
+            user = self.bot.get_user(405798011172814868)
+            await user.send(f"```{error}```")
+            return
 
         if len(pcpp_list.parts) == 0:
             return

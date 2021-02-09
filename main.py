@@ -40,6 +40,9 @@ bot.reactions = ["1\N{variation selector-16}\N{combining enclosing keycap}",
 bot.countries = country_data
 bot.urls = [f"https://{reg_code}.pcpartpicker.com/list/" for reg_code in [*bot.countries]] + ["https://pcpartpicker.com/list/"]
 bot.botadmins = [287256464047865857, 405798011172814868]
+bot.user_embeds = {}
+bot.queued_lists = []
+bot.rate_limited = False
 
 async def unpack_db():
     async with aiosqlite.connect("bot.db") as conn:
@@ -47,8 +50,6 @@ async def unpack_db():
         data = await cursor.fetchall()
         await conn.commit()
     bot.autopcpp_disabled = [serverid[0] for serverid in data]
-
-
 
 @bot.event
 async def on_ready():
@@ -243,7 +244,7 @@ async def on_guild_join(guild):
                 - Doing `,partspecs [name of part]`
                 - Doing `,partprice [name of part]`
                 - Doing `,randompost`
-                If you need additional help, join the [Offical Discord](https://discord.gg/WM9pHp8) or contact **QuaKe#5943**.
+                If you need additional help, join the [Offical Discord](https://discord.gg/WM9pHp8) or contact **QuaKe#9535**.
                 Enjoying PartsBot? Consider supporting our work on [Patreon](https://www.patreon.com/partsbot).
                 Don't like auto PCPartPicker link formatting? Use the command `,autopcpp disable`.
                 ''')

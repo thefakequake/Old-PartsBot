@@ -96,44 +96,6 @@ def get_price(url):
 
 
 
-def format_product_link(url):
-
-    page = requests.get(url, headers=headers)
-    soup = BeautifulSoup(page.content, "html.parser")
-
-    rating = None
-    for a in soup.find_all(class_="product--rating list-unstyled"):
-        text = a.get_text()
-        if not 'Ratings' in text:
-            continue
-        rating = text.strip().strip('()')
-    compatible_links = [f"[{a.get_text()}]({url.split('com')[0] + 'com'}{a['href']})" for a in soup.find_all(href=True) if "compatible" in a["href"]]
-    compatible_links = list(dict.fromkeys(compatible_links))
-    product_name = soup.find(class_="pageTitle").get_text()
-    prices = [f"{a.get_text()}" for a in soup.find_all(class_="td__finalPrice")]
-    buy_links = [f"{url.split('com')[0] + 'com'}{a['href']}" for a in soup.find_all(href=True) if a["href"].startswith("/mr/")]
-    vendors = [a.select('img')[0]['alt'] for a in soup.find_all(class_='td__logo')]
-    stock = [a.get_text().replace('\n', '') for a in soup.find_all(class_="td__availability")]
-
-
-    try:
-        index = stock.index('In stock')
-    except ValueError:
-        index = None
-    images = [a["src"] for a in soup.find_all('img', src=True) if "cdna.pcpartpicker.com/static/forever/images/product/" in a["src"]]
-    if len(images) == 0:
-        image = None
-    else:
-        image = f"https:{images[0]}"
-    if index != None:
-        best_price = (prices[index].replace('\n', ''), f"[{vendors[index]}]({buy_links[index]})")
-    else:
-        best_price = None
-
-    return product_name, compatible_links, best_price, image, rating
-
-
-
 async def log(bot, command, ctx):
     logs = bot.get_channel(769906608318316594)
     embed_msg = discord.Embed(title=f"Command '{command}' used by {str(ctx.message.author)}.", description=f"**Text:**\n{ctx.message.content}\n\n**User ID:**\n{ctx.author.id}\n\n**Full Details:**\n{str(ctx.message)}", colour=green, timestamp=datetime.utcnow())
@@ -534,7 +496,7 @@ class PCPartPicker(commands.Cog):
             return
         elif message.guild != None and message.guild.id in self.bot.autopcpp_disabled:
             return
-        elif ',updatebuild' in message.content or ',createbuild' in message.content:
+        elif 'updatebuild' in message.content or 'createbuild' in message.content:
             return
 
 
@@ -545,36 +507,6 @@ class PCPartPicker(commands.Cog):
 
         for match in matches:
             if not 'pcpartpicker.com' in match and not '/list' in match:
-                continue
-            if '/product/' in match:
-
-                with concurrent.futures.ThreadPoolExecutor() as pool:
-                    product_name, compatible_links, best_price, image, rating = await asyncio.get_event_loop().run_in_executor(pool, format_product_link, match)
-
-                if rating is None:
-                    description = 'No ratings.' + '\n\n' + '\n'.join(compatible_links[:3])
-                else:
-                    description = rating + '\n\n' + '\n'.join(compatible_links[:3])
-
-                embed_msg = discord.Embed(
-                    title = product_name,
-                    description = description,
-                    url = match,
-                    colour = green
-                )
-                if best_price != None:
-                    embed_msg.add_field(
-                        name = "Best Price",
-                        value = f"**{best_price[1]}: {best_price[0]}**"
-                    )
-                else:
-                    embed_msg.add_field(
-                        name = "Best Price",
-                        value = f"Product not in stock."
-                    )
-                if image != None:
-                    embed_msg.set_thumbnail(url=image)
-                await message.channel.send(embed=embed_msg)
                 continue
             if match.endswith("/list") or match.endswith("/list/"):
                 if len(matches) > 1:

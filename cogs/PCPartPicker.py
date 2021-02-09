@@ -306,6 +306,7 @@ class PCPartPicker(commands.Cog):
         try:
             pcpp_list = pcpp.fetch_list(list_item[0])
         except pypartpicker.Verification as error:
+            self.bot.rate_limited = True
             user = self.bot.get_user(405798011172814868)
             await user.send(f"```{error}```")
             return

@@ -5,10 +5,8 @@ import aiosqlite
 import concurrent.futures
 import re
 import asyncio
-import requests
-from bs4 import BeautifulSoup
 from utils import Member
-from cogs.PCPartPicker import format_pcpp_link
+from pypartpicker import Scraper, get_list_links
 
 
 red = discord.Colour(0x1e807c)
@@ -59,37 +57,27 @@ class Builds(commands.Cog):
                 return
             message_content = message.content
 
-        '''
-        credit to CorpNewt for this regex: https://github.com/corpnewt/CorpBot.py/blob/rewrite/Cogs/Server.py#L20
-        '''
-        find = re.compile(r"(http|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?")
 
-
-        matches = [match.group() for match in re.finditer(find, message_content)]
+        matches = get_list_links(message_content)
 
         build_content = message_content
         build_url = "None"
+        pcpp = Scraper()
 
         if len(matches) > 0:
             for url in matches:
-                if '/product/' in url:
-                    continue
-                if '/user/' in url:
-                    continue
+                pcpp_list = pcpp.fetch_list(url)
 
-                with concurrent.futures.ThreadPoolExecutor() as pool:
-                    products, total_wattage, total_price, page_title = await asyncio.get_event_loop().run_in_executor(pool, format_pcpp_link, url)
-
-                description = '\n'.join([f"**{type}** - [{name}]({url})" if url != None else f"**{type}** - {name}" for type, name, url in products])
+                description = '\n'.join([f"**{part.type}** - [{part.name}]({part.url})" if part.url != None else f"**{part.type}** - {part.name}" for part in pcpp_list.parts]) + '\n'
                 if len(description) > 1950:
-                    description = '\n'.join([f"**{type}** - {name}" for type, name, url in products])[:1950]
+                    description = '\n'.join([f"**{part.type}** - {part.name}" for part in pcpp_list.parts])[:1950] + '\n'
 
                 if description == "":
                     build_content = url
                 else:
                     build_content = description
 
-                build_url = url
+                build_url = pcpp_list.url
                 break
 
         async with aiosqlite.connect("bot.db") as conn:
@@ -144,38 +132,26 @@ class Builds(commands.Cog):
                 await sent_message.edit(embed=embed_msg)
                 return
             message_content = message.content
-
-        '''
-        credit to CorpNewt for this regex: https://github.com/corpnewt/CorpBot.py/blob/rewrite/Cogs/Server.py#L20
-        '''
-        find = re.compile(r"(http|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?")
-
-
-        matches = [match.group() for match in re.finditer(find, message_content)]
+        matches = get_list_links(message_content)
 
         build_content = message_content
         build_url = "None"
+        pcpp = Scraper()
 
         if len(matches) > 0:
             for url in matches:
-                if '/product/' in url:
-                    continue
-                if '/user/' in url:
-                    continue
+                pcpp_list = pcpp.fetch_list(url)
 
-                with concurrent.futures.ThreadPoolExecutor() as pool:
-                    products, total_wattage, total_price, page_title = await asyncio.get_event_loop().run_in_executor(pool, format_pcpp_link, url)
-
-                description = '\n'.join([f"**{type}** - [{name}]({url})" if url != None else f"**{type}** - {name}" for type, name, url in products])
+                description = '\n'.join([f"**{part.type}** - [{part.name}]({part.url})" if part.url != None else f"**{part.type}** - {part.name}" for part in pcpp_list.parts]) + '\n'
                 if len(description) > 1950:
-                    description = '\n'.join([f"**{type}** - {name}" for type, name, url in products])[:1950]
+                    description = '\n'.join([f"**{part.type}** - {part.name}" for part in pcpp_list.parts])[:1950] + '\n'
 
                 if description == "":
                     build_content = url
                 else:
                     build_content = description
 
-                build_url = url
+                build_url = pcpp_list.url
                 break
 
         async with aiosqlite.connect("bot.db") as conn:

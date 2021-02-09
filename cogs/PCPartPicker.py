@@ -11,7 +11,7 @@ import DiscordUtils
 import aiosqlite
 import random
 import json
-from pypartpicker import Scraper, get_list_links
+from pypartpicker import Scraper, get_list_links, Verification
 
 
 green = discord.Colour(0x1e807c)
@@ -100,7 +100,6 @@ async def log(bot, command, ctx):
     logs = bot.get_channel(769906608318316594)
     embed_msg = discord.Embed(title=f"Command '{command}' used by {str(ctx.message.author)}.", description=f"**Text:**\n{ctx.message.content}\n\n**User ID:**\n{ctx.author.id}\n\n**Full Details:**\n{str(ctx.message)}", colour=green, timestamp=datetime.utcnow())
     await logs.send(embed=embed_msg)
-
 
 
 def get_build_guides(url):
@@ -287,7 +286,14 @@ class PCPartPicker(commands.Cog):
         self.bot = bot
         self.dequeue_urls.start()
 
-
+    async def log_request(self, **kwargs):
+        if kwargs.get("context") == "autopcpp":
+            channel = self.bot.get_channel(808709043098091560)
+        elif kwargs.get("context") == "partprice":
+            channel = self.bot.get_channel(808708999435911218)
+        elif kwargs.get("context") == "partspecs":
+            channel = self.bot.get_channel(808708966431457324)
+        await channel.send(f"Request made for command **{kwargs.get('context')}** by user **{kwargs.get('details').author}** (ID: {kwargs.get('details').author.id}) in server **{kwargs.get('details').guild.name}** (ID: {kwargs.get('details').guild.id})")
 
     @tasks.loop(seconds=random.uniform(5.0, 10.0))
     async def dequeue_urls(self):
@@ -298,14 +304,15 @@ class PCPartPicker(commands.Cog):
         else:
             self.dequeue_urls.change_interval(seconds=1)
             return
+
         list_item = self.bot.queued_lists[0]
         self.bot.queued_lists.pop(0)
-
+        await self.log_request(context="autopcpp", details=list_item[1])
         pcpp = Scraper()
 
         try:
             pcpp_list = pcpp.fetch_list(list_item[0])
-        except pypartpicker.Verification as error:
+        except Verification as error:
             self.bot.rate_limited = True
             user = self.bot.get_user(405798011172814868)
             await user.send(f"```{error}```")
@@ -339,6 +346,7 @@ class PCPartPicker(commands.Cog):
     @commands.cooldown(2, 120, commands.BucketType.member)
     async def partspecs(self, ctx, *, search_term):
         await log(self.bot, 'partspecs', ctx)
+        await self.log_request(context="partspecs", details=ctx)
         embed_msg = discord.Embed(title=f"Finding specs for '{search_term}' on PCPartPicker...", timestamp=datetime.utcnow(), colour=green)
         message = await ctx.send(embed=embed_msg)
 
@@ -410,6 +418,7 @@ class PCPartPicker(commands.Cog):
     async def partprice(self, ctx, region, *, search_term=None):
         countries = [*self.bot.countries]
         await log(self.bot, 'partprice', ctx)
+        await self.log_request(context="partprice", details=ctx)
 
         if region.lower() in countries:
             search_string = search_term

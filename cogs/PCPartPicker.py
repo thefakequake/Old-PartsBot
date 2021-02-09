@@ -11,7 +11,7 @@ import DiscordUtils
 import aiosqlite
 import random
 import json
-from pypartpicker import Scraper
+from pypartpicker import Scraper, get_list_links
 
 
 green = discord.Colour(0x1e807c)
@@ -326,27 +326,28 @@ class PCPartPicker(commands.Cog):
 
 
 
-    @tasks.loop(seconds=random.randint(5, 10))
+    @tasks.loop(seconds=random.uniform(5.0, 10.0))
     async def dequeue_urls(self):
-        self.test_loop.change_interval(seconds=random.randint(5, 10))
-        if len(self.bot.queued_lists) == 0:
+        if len(self.bot.queued_lists) > 0:
+            self.dequeue_urls.change_interval(seconds=random.uniform(5.0, 10.0))
+        else:
+            self.dequeue_urls.change_interval(seconds=1)
             return
         list_item = self.bot.queued_lists[0]
         self.bot.queued_lists.pop(0)
-
-        if len(products) == 0:
-            return
 
         pcpp = Scraper()
 
         pcpp_list = pcpp.fetch_list(list_item[0])
 
+        if len(pcpp_list.parts) == 0:
+            return
+
         description = '\n'.join([f"**{part.type}** - [{part.name}]({part.url})" if part.url != None else f"**{part.type}** - {part.name}" for part in pcpp_list.parts]) + '\n'
         if len(description) > 1950:
             description = '\n'.join([f"**{part.type}** - {part.name}" for part in pcpp_list.parts])[:1950] + '\n'
 
-        if total_wattage != None:
-            description += f"\n**Estimated Wattage:** {pcpp_list.wattage}"
+        description += f"\n**Estimated Wattage:** {pcpp_list.wattage}"
         description += f"\n**Total Price:** {pcpp_list.total}"
 
 
@@ -354,10 +355,10 @@ class PCPartPicker(commands.Cog):
             title = "Parts List",
             description = description,
             colour = green,
-            url = url
+            url = pcpp_list.url
         )
 
-        await list_item[1].channel.send(embed=embed_msg)
+        await list_item[1].reply(embed=embed_msg)
 
 
 
@@ -536,13 +537,8 @@ class PCPartPicker(commands.Cog):
         elif ',updatebuild' in message.content or ',createbuild' in message.content:
             return
 
-        '''
-        credit to CorpNewt for this regex: https://github.com/corpnewt/CorpBot.py/blob/rewrite/Cogs/Server.py#L20
-        '''
-        find = re.compile(r"(http|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?")
 
-
-        matches = [match.group() for match in re.finditer(find, message.content)]
+        matches = get_list_links(message.content)
 
 
         urls = []

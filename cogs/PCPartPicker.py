@@ -11,6 +11,8 @@ import DiscordUtils
 import aiosqlite
 import random
 import json
+from pypartpicker import Scraper
+
 
 green = discord.Colour(0x1e807c)
 headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36 Edg/88.0.705.63', 'cookie': 'xsessionid=8gxgh7l25gwr276aregdd4qnj7zhmxwb; xcsrftoken=o7wXfkFMvIMf5SKShBaC4E0KJ7anQ1mdzHuZ4G6sWwMH2gSbcsZn5YdneEKo8fiv; xgdpr-consent=allow; __cfduid=d8b6350b0033bccdde51da015aaf07f381611344324; cf_clearance=d8b834d4bd7bf761c45622d38c027bc6e0d93f24-1612772344-0-150'}
@@ -92,50 +94,6 @@ def get_price(url):
     links = list(dict.fromkeys(links))
     return prices, links, sellers, images, stock, page_title
 
-
-
-def format_pcpp_link(url):
-    producturls = []
-    productnames = []
-
-    page = requests.get(url, headers=headers)
-    soup = BeautifulSoup(page.content, 'html.parser')
-
-
-    for a in soup.find_all(class_='td__name'):
-        if 'From parametric selection:' in a.get_text():
-            productnames.append(a.get_text().split('From parametric selection:')[0].replace('\n', ''))
-        elif 'From parametric filter:' in a.get_text():
-            productnames.append(a.get_text().split('From parametric filter:')[0].replace('\n', ''))
-        else:
-            productnames.append(a.get_text().replace('\n', ''))
-        if 'a href=' in str(a) and not '#view_custom_part' in str(a):
-            elements = str(a).split('"')
-            for element in elements:
-                if element.startswith("/product/"):
-                    producturls.append(f"{url.split('com')[0]}com{element}")
-        else:
-            producturls.append(None)
-
-    producttypes = [a.get_text().replace('\n', '') for a in soup.find_all(class_='td__component')]
-
-    products = []
-
-    for i in range(len(producttypes)):
-        products.append((producttypes[i], productnames[i], producturls[i]))
-
-    try:
-        wattage = soup.find(class_='partlist__keyMetric').get_text().replace('\n', '').replace("Estimated Wattage:", '')
-    except (AttributeError, IndexError):
-        wattage = None
-
-    prices = [a.get_text() for a in soup.find_all(class_='td__price')]
-
-    if len(prices) == 0: prices = None
-
-    page_title = soup.find(class_="pageTitle").get_text()
-
-    return products, wattage, prices, page_title
 
 
 def format_product_link(url):
@@ -364,6 +322,46 @@ class PCPartPicker(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.dequeue_urls.start()
+
+
+
+    @tasks.loop(seconds=random.randint(5, 10))
+    async def dequeue_urls(self):
+        self.test_loop.change_interval(seconds=random.randint(5, 10))
+        if len(self.bot.queued_lists) == 0:
+            return
+        list_item = self.bot.queued_lists[0]
+        self.bot.queued_lists.pop(0)
+
+        if len(products) == 0:
+            return
+
+        pcpp = Scraper()
+
+        pcpp_list = pcpp.fetch_list(list_item[0])
+
+        description = '\n'.join([f"**{part.type}** - [{part.name}]({part.url})" if part.url != None else f"**{part.type}** - {part.name}" for part in pcpp_list.parts]) + '\n'
+        if len(description) > 1950:
+            description = '\n'.join([f"**{part.type}** - {part.name}" for part in pcpp_list.parts])[:1950] + '\n'
+
+        if total_wattage != None:
+            description += f"\n**Estimated Wattage:** {pcpp_list.wattage}"
+        description += f"\n**Total Price:** {pcpp_list.total}"
+
+
+        embed_msg = discord.Embed(
+            title = "Parts List",
+            description = description,
+            colour = green,
+            url = url
+        )
+
+        await list_item[1].channel.send(embed=embed_msg)
+
+
+
+
 
     @commands.command(aliases=['specs', 'ps', 's'], description='shows detailed specs for a part via search query. if multiple results are returned, user must react with appropriate emoji to get the desired term.')
     @commands.cooldown(2, 120, commands.BucketType.member)
@@ -550,7 +548,7 @@ class PCPartPicker(commands.Cog):
         urls = []
 
         for match in matches:
-            if not 'pcpartpicker' in match:
+            if not 'pcpartpicker.com' in match and not '/list' in match:
                 continue
             if '/product/' in match:
 
@@ -592,40 +590,13 @@ class PCPartPicker(commands.Cog):
                 embed_msg.set_image(url = "https://images-ext-2.discordapp.net/external/d_524-5pqtAyimIrQTDWPumbJ-rB5JmglIR1UD9G8hI/https/i.imgur.com/zQrtYKAh.jpg")
                 await message.reply(embed=embed_msg)
                 continue
-            urls.append(match)
+            urls.append((match, message))
 
         if len(urls) == 0:
             return
 
         for url in urls:
-
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                products, total_wattage, total_price, page_title = await asyncio.get_event_loop().run_in_executor(pool, format_pcpp_link, url)
-
-            if len(products) == 0:
-                return
-
-            description = '\n'.join([f"**{type}** - [{name}]({url})" if url != None else f"**{type}** - {name}" for type, name, url in products]) + '\n'
-            if len(description) > 1950:
-                description = '\n'.join([f"**{type}** - {name}" for type, name, url in products])[:1950] + '\n'
-
-            if total_wattage != None:
-                description += f"\n**Estimated Wattage:** {total_wattage}"
-            if total_price != None and len(total_price) > len(products):
-                description += f"\n**Total Price:** {total_price[-1]}"
-
-            if page_title == "System Builder":
-                page_title = "Parts List"
-
-            embed_msg = discord.Embed(
-                title = page_title,
-                description = description,
-                colour = green,
-                url = url
-            )
-
-
-            await message.channel.send(embed=embed_msg)
+           self.bot.queued_lists.append(url)
 
 
     @commands.command()

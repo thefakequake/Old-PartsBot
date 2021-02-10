@@ -7,3 +7,4 @@ currencyconverter
 praw
 DiscordUtils
 pypartpicker
+fuzzywuzzy

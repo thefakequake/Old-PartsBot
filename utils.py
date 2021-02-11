@@ -64,7 +64,7 @@ class Database:
         self.db = db_name
 
 
-    async def generate_id(self):
+    async def _generate_id(self):
         async with aiosqlite.connect(self.db) as conn:
             cursor = await conn.execute("SELECT * FROM count")
             count = await cursor.fetchone()
@@ -76,7 +76,7 @@ class Database:
 
     async def add_part(self, **kwargs):
         async with aiosqlite.connect(self.db) as conn:
-            id = await self.generate_id()
+            id = await self._generate_id()
             await conn.execute("INSERT INTO parts VALUES (?, ?, ?, ?)", (id, kwargs.get("name", "None"), kwargs.get("type", "None").lower(), "{}"))
             await conn.commit()
         return id
@@ -106,4 +106,9 @@ class Database:
             await conn.commit()
         if len(part) == 0:
             return None
-        return Part(id = part[0], name = part[1], data = part[2], db_obj = self)
+        return Part(
+            id = part[0],
+            name = part[1],
+            data = part[2],
+            db_obj = self
+        )

@@ -95,7 +95,7 @@ class Database:
             cursor = await conn.execute("SELECT * FROM parts WHERE part_id = ?", (id,))
             part = await cursor.fetchone()
             await conn.commit()
-        if len(part) == 0:
+        if part is None:
             return None
         return Part(
             id = part[0],

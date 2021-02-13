@@ -66,7 +66,8 @@ class Database:
 
     async def add_part(self, **kwargs):
         async with aiosqlite.connect(self.db) as conn:
-            await conn.execute("INSERT INTO parts (part_name, part_type, part_data) VALUES (?, ?, ?)", (kwargs.get("name", "None"), kwargs.get("type", "None").lower(), "{}"))
+            json = '{' + f'"name": "{kwargs.get("name")}", "type": "{kwargs.get("type")}"' + '}'
+            await conn.execute("INSERT INTO parts (part_name, part_type, part_data) VALUES (?, ?, ?)", (kwargs.get("name"), kwargs.get("type").lower(), json))
             cursor = await conn.execute("SELECT last_insert_rowid()")
             item = await cursor.fetchone()
             await conn.commit()

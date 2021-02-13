@@ -65,6 +65,12 @@ class Database:
 
 
     async def add_part(self, **kwargs):
+        
+        if kwargs.get("name") is None:
+            raise ValueError("Kwarg name is missing!")
+        elif kwargs.get("type") is None:
+            raise ValueError("Kwarg type is missing!")
+        
         async with aiosqlite.connect(self.db) as conn:
             json = '{' + f'"name": "{kwargs.get("name")}", "type": "{kwargs.get("type")}"' + '}'
             await conn.execute("INSERT INTO parts (part_name, part_type, part_data) VALUES (?, ?, ?)", (kwargs.get("name"), kwargs.get("type").lower(), json))

@@ -1,4 +1,4 @@
-![PartsBot Logo](https://images-ext-2.discordapp.net/external/6UmCMcasGIE3Re778AWhhiu9-bBYH9oJk6Css0sRb0g/%3Ftoken-time%3D1612396800%26token-hash%3D9oUuzM-M5AMRgqCPjngzkuMQSHvY9p6kcmIzh-XHcAg%253D/https/c10.patreonusercontent.com/3/eyJ3Ijo5NjB9/patreon-media/p/campaign/4864117/1cca5404da9a41a4af5bc81fda411782/4.png)
+![PartsBot Logo](./partsbot_logo-text.png)
 
 ### PartsBot is a Discord bot that can automatically format PCPartPicker links, check pricing and specs for parts, save your build and allow you to update it on the fly, and much, much more.
 #### You can invite the bot [here](https://discord.com/api/oauth2/authorize?client_id=769886576321888256&permissions=0&scope=bot). Consider supporting this project on the [PartsBot Patreon](https://www.patreon.com/partsbot). Join the [Discord Server](https://discord.gg/WM9pHp8) if you need to get any help regarding this bot.

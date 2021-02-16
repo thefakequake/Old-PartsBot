@@ -29,56 +29,75 @@ class Member(commands.MemberConverter):
             return get_member(guild, name=argument)
 
 
-class Part:
-    def __init__(self, **kwargs):
-        self.name = kwargs.get("name")
-        self.id = kwargs.get("id")
-        self.data = kwargs.get("data")
-        self.db_obj = kwargs.get("db_obj")
-
-
-    async def edit_spec(self, **kwargs):
-        if kwargs.get("spec_name") is None:
-            raise ValueError("No kwarg 'spec_name' passed!")
-            return
-        elif kwargs.get("spec_value") is None:
-            raise ValueError("No kwarg 'spec_value' passed!")
-            return
-        elif not isinstance(kwargs.get("spec_value"), list):
-            raise ValueError("Spec value must be a list!")
-            return
-        async with aiosqlite.connect(self.db_obj.db) as conn:
-            cursor = await conn.execute("SELECT * FROM parts WHERE part_id = ?", (self.id,))
-            part = await cursor.fetchone()
-            await conn.commit()
-        part_specs = ast.literal_eval(part[3])
-        part_specs[kwargs.get("spec_name")] = kwargs.get("spec_value")
-        async with aiosqlite.connect(self.db_obj.db) as conn:
-            await conn.execute("UPDATE parts SET part_data = ? WHERE part_id = ?", (str(part_specs), self.id))
-            await conn.commit()
-        return part_specs
-
-
 class Database:
     def __init__(self, db_name):
         self.db = db_name
 
-
-    async def add_part(self, **kwargs):
-        
-        if kwargs.get("name") is None:
-            raise ValueError("Kwarg name is missing!")
-        elif kwargs.get("type") is None:
-            raise ValueError("Kwarg type is missing!")
-        
+    async def _get_next_sequence_num(self):
         async with aiosqlite.connect(self.db) as conn:
-            json = '{' + f'"name": "{kwargs.get("name")}", "type": "{kwargs.get("type")}"' + '}'
-            await conn.execute("INSERT INTO parts (part_name, part_type, part_data) VALUES (?, ?, ?)", (kwargs.get("name"), kwargs.get("type").lower(), json))
+            cursor = await conn.execute("SELECT seq FROM sqlite_sequence WHERE name = ?", ("parts",))
+            num = await cursor.fetchone()
+            await conn.commit()
+        return int(num[0]) + 1
+
+    async def add_part(self, part_data):
+        
+        if part_data.get("name") is None or not isinstance(part_data.get("name"), str):
+            raise ValueError("Key name is either missing or not str!")
+        elif part_data.get("type") is None or not isinstance(part_data.get("type"), str):
+            raise ValueError("Key type is either missing or not str!")
+        elif part_data.get("manufacturer") is None or not isinstance(part_data.get("manufacturer"), str):
+            raise ValueError("Key manufacturer is either missing or str!")
+        elif part_data.get("specs") != None and not isinstance(part_data.get("specs"), dict):
+            raise ValueError("Key specs must either be dict or None!")
+        elif part_data.get("images") != None and not isinstance(part_data.get("images"), list):
+            raise ValueError("Key images must either be list or None!")
+        elif part_data.get("sources") != None and not isinstance(part_data.get("sources"), list):
+            raise ValueError("Key sources must either be list or None!")
+        elif part_data.get("notes") != None and not isinstance(part_data.get("notes"), list):
+            raise ValueError("Key notes must either be list or None!")
+        elif part_data.get("contributors") != None and not isinstance(part_data.get("contributors"), list):
+            raise ValueError("Key contributors must either be list or None!")
+
+        data = {
+            "name": part_data.get("name"),
+            "type": part_data.get("type"),
+            "manufacturer": part_data.get("manufacturer"),
+            "id": await self._get_next_sequence_num(),
+            "specs": part_data.get("specs", {}),
+            "images": part_data.get("images", []),
+            "sources": part_data.get("sources", []),
+            "notes": part_data.get("notes", [])
+        }
+
+        async with aiosqlite.connect(self.db) as conn:
+            await conn.execute("INSERT INTO parts (part_name, part_type, part_data) VALUES (?, ?, ?)", (part_data["name"], part_data["type"].lower(), str(data)))
             cursor = await conn.execute("SELECT last_insert_rowid()")
             item = await cursor.fetchone()
             await conn.commit()
         return item[0]
 
+
+    async def edit_part(self, id, dict):
+        async with aiosqlite.connect(self.db) as conn:
+            cursor = await conn.execute("SELECT * FROM parts WHERE part_id = ?", (id,))
+            part = await cursor.fetchone()
+            if part is None:
+                raise ValueError("Invalid part ID!")
+            if dict["name"] != part[1]:
+                await conn.execute("UPDATE parts SET part_name = ? WHERE part_id = ?", (dict["name"], id))
+            if dict["type"] != part[2]:
+                await conn.execute("UPDATE parts SET part_type = ? WHERE part_id = ?", (dict["type"], id))
+            if dict["id"] != id:
+                dict["id"] = id
+            await conn.execute("UPDATE parts SET part_data = ? WHERE part_id = ?", (str(dict), id))
+            await conn.commit()
+
+
+    async def delete_part(self, id):
+        async with aiosqlite.connect(self.db) as conn:
+            await conn.execute("DELETE FROM parts WHERE part_id = ?", (id,))
+            await conn.commit()
 
     async def search_parts(self, **kwargs):
         async with aiosqlite.connect(self.db) as conn:
@@ -94,6 +113,7 @@ class Database:
                 cursor = await conn.execute("SELECT part_id FROM parts WHERE part_name = ?", (string,))
                 item = await cursor.fetchone()
                 pairs.append((string, item[0]))
+            await conn.commit()
         return pairs
 
 
@@ -104,9 +124,4 @@ class Database:
             await conn.commit()
         if part is None:
             return None
-        return Part(
-            id = part[0],
-            name = part[1],
-            data = part[2],
-            db_obj = self
-        )
+        return part[3]

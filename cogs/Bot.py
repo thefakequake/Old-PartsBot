@@ -83,7 +83,7 @@ class Bot(commands.Cog):
         embed_msg = discord.Embed(title="About PartsBot",
                                   description="PartsBot was created by QuaKe#9535.\nPartsBot scrapes [PCPartPicker](https://pcpartpicker.com/) and is programmed in Python with the [discord.py](https://github.com/Rapptz/discord.py) API wrapper.\n\n[Invite Link](https://discord.com/api/oauth2/authorize?client_id=769886576321888256&permissions=0&scope=bot) • [Official Discord Server](https://discord.gg/WM9pHp8) • [Patreon](https://patreon.com/partsbot) • [GitHub](https://github.com/QuaKe8782/PartsBot) • [DBL](https://discordbotlist.com/bots/partsbot) • [top.gg](https://top.gg/bot/769886576321888256)\n\nSpecial thanks to Bogdan, Duck Dude, Zorf, Ozone and John Benber.\nShout out to Grxffiti.",
                                   timestamp=datetime.utcnow(), colour=red)
-        embed_msg.set_thumbnail(url=bot.user.avatar_url_as(format="png", size=1024))
+        embed_msg.set_thumbnail(url=self.bot.user.avatar_url_as(format="png", size=1024))
         await ctx.send(embed=embed_msg)
 
         

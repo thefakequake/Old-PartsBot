@@ -44,12 +44,14 @@ bot.user_embeds = {}
 bot.queued_lists = []
 bot.rate_limited = False
 
+
 async def unpack_db():
     async with aiosqlite.connect("bot.db") as conn:
         cursor = await conn.execute("SELECT * FROM autopcpp")
         data = await cursor.fetchall()
         await conn.commit()
     bot.autopcpp_disabled = [serverid[0] for serverid in data]
+
 
 @bot.event
 async def on_ready():

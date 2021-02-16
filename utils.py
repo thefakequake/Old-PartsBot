@@ -4,6 +4,7 @@ import json
 from fuzzywuzzy import process
 import aiosqlite
 
+
 def get_member(guild, **attrs):
     name = attrs["name"]
 
@@ -33,7 +34,6 @@ class Database:
     def __init__(self, db_name):
         self.db = db_name
 
-
     async def _get_next_sequence_num(self):
         async with aiosqlite.connect(self.db) as conn:
             cursor = await conn.execute("SELECT seq FROM sqlite_sequence WHERE name = ?", ("parts",))
@@ -42,20 +42,19 @@ class Database:
         return int(num[0]) + 1
 
     async def add_part(self, part_data):
-        
         if part_data.get("name") is None or not isinstance(part_data.get("name"), str):
             raise ValueError("Key name is either missing or not str!")
         elif part_data.get("type") is None or not isinstance(part_data.get("type"), str):
             raise ValueError("Key type is either missing or not str!")
         elif part_data.get("manufacturer") is None or not isinstance(part_data.get("manufacturer"), str):
             raise ValueError("Key manufacturer is either missing or str!")
-        elif part_data.get("specs") != None and not isinstance(part_data.get("specs"), dict):
+        elif part_data.get("specs") is not None and not isinstance(part_data.get("specs"), dict):
             raise ValueError("Key specs must either be dict or None!")
-        elif part_data.get("images") != None and not isinstance(part_data.get("images"), list):
-            raise ValueError("Key images must either be list or None!")
-        elif part_data.get("sources") != None and not isinstance(part_data.get("sources"), list):
+        elif part_data.get("sources") is not None and not isinstance(part_data.get("sources"), list):
             raise ValueError("Key sources must either be list or None!")
-        elif part_data.get("notes") != None and not isinstance(part_data.get("notes"), list):
+        elif part_data.get("images") is not None and not isinstance(part_data.get("images"), list):
+            raise ValueError("Key images must either be list or None!")
+        elif part_data.get("notes") is not None and not isinstance(part_data.get("notes"), list):
             raise ValueError("Key notes must either be list or None!")
         elif part_data.get("contributors") != None and not isinstance(part_data.get("contributors"), list):
             raise ValueError("Key contributors must either be list or None!")
@@ -66,8 +65,8 @@ class Database:
             "manufacturer": part_data.get("manufacturer"),
             "id": await self._get_next_sequence_num(),
             "specs": part_data.get("specs", {}),
-            "images": part_data.get("images", []),
             "sources": part_data.get("sources", []),
+            "images": part_data.get("images", []),
             "notes": part_data.get("notes", []),
             "contributors": part_data.get("contributors", [])
         }
@@ -78,7 +77,6 @@ class Database:
             item = await cursor.fetchone()
             await conn.commit()
         return item[0]
-
 
     async def edit_part(self, id, dict):
         async with aiosqlite.connect(self.db) as conn:

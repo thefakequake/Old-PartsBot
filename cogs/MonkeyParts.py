@@ -21,24 +21,12 @@ class MonkeyPart(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # TODO: Make it a group
+    # TODO: Make the command a group
 
     @is_submission_channel()
     @commands.cooldown(rate=1, per=1, type=commands.BucketType.member)
     @commands.command(description="Submit specifications for a part.")
     async def submitpart(self, ctx, *, part):
-        # TODO: Get more info like manufacturer, notes, sources, images etc.
-
-        db = utils.Database("data.db")
-        results = await db.search_parts(name=part)
-
-        for result in results:
-            if part.lower() == result[0].lower():
-                # TODO: Ask user if they want to edit it instead
-                duplicate = discord.Embed(description="Part already exists.", colour=green)
-                await ctx.send(embed=duplicate)
-                return
-
         part_submissions_category = ctx.guild.get_channel(810298926678540329)
         verification_queue = ctx.guild.get_channel(810298741911060492)
         moderator_role = ctx.guild.get_role(810130497485275166)
@@ -48,7 +36,24 @@ class MonkeyPart(commands.Cog):
         def message_check(m):
             return m.channel == ctx.channel and m.author.id == ctx.author.id
 
-        await ctx.send("What type is this part?")
+        def reaction_check(reaction, user):
+            return not user.bot and moderator_role in user.roles and reaction.emoji in ("✅", "❌")
+
+        db = utils.Database("data.db")
+        results = await db.search_parts(name=part)
+
+        # Check if there are any duplicates
+        for result in results:
+            if part.lower() == result[0].lower():
+                # TODO: Ask user if they want to edit it instead
+                duplicate = discord.Embed(description="Part already exists.", colour=green)
+                await ctx.send(embed=duplicate)
+                return
+
+        # Ask for the part type
+        part_type_embed = discord.Embed(description="What type is this part?", colour=green)
+        part_type_embed.set_footer(text="Required")
+        await ctx.send(embed=part_type_embed)
         part_type = await self.bot.wait_for("message", check=message_check, timeout=60)
 
         while not part_type.content.lower() in valid_part_types_lower:
@@ -56,9 +61,50 @@ class MonkeyPart(commands.Cog):
                 await ctx.send(embed=stop_message)
                 return
 
-            await ctx.send(f"The type you entered is invalid. You must pick from: `{', '.join(valid_part_types)}.`")
+            await ctx.send(
+                f"The type you entered is invalid. You must pick from: `{', '.join(valid_part_types)}.`")
             part_type = await self.bot.wait_for("message", check=message_check, timeout=60)
 
+        # Ask for the manufacturer
+        manufacturer_embed = discord.Embed(description="What is the manufacturer for this part?", colour=green)
+        manufacturer_embed.set_footer(text="Required")
+        await ctx.send(embed=manufacturer_embed)
+        manufacturer = await self.bot.wait_for("message", check=message_check, timeout=60)
+        if "stop" in manufacturer.content.lower():
+            await ctx.send(embed=stop_message)
+            return
+
+        # Ask for sources TODO: Make the sources optional
+        sources_embed = discord.Embed(description="What are the sources for the specs?", colour=green)
+        sources_embed.set_footer(text="Recommended")
+        await ctx.send(embed=sources_embed)
+        sources = await self.bot.wait_for("message", check=message_check, timeout=60)
+        if "stop" in sources.content.lower():
+            await ctx.send(embed=stop_message)
+            return
+
+        # Ask for part images TODO: Make the images optional
+        images_embed = discord.Embed(description="What image URLs are there for the part?\n*(Separated by a comma and "
+                                                 "space: `, `)*", colour=green)
+        images_embed.set_footer(text="Optional")
+        await ctx.send(embed=images_embed)
+        image_urls = await self.bot.wait_for("message", check=message_check, timeout=60)
+        if "stop" in image_urls.content.lower():
+            await ctx.send(embed=stop_message)
+            return
+
+        # Ask for notes on the part TODO: Make the notes optional
+        notes_embed = discord.Embed(description="Are there any notes on the product?", colour=green)
+        notes_embed.set_footer(text="Optional")
+        await ctx.send(embed=notes_embed)
+        notes = await self.bot.wait_for("message", check=message_check, timeout=60)
+        if "stop" in notes.content.lower():
+            await ctx.send(embed=stop_message)
+            return
+
+        images = image_urls.content.split(", ")
+
+        # Receive the part specs
         while True:
             await ctx.send("What is the spec called?")
             spec_name = await self.bot.wait_for("message", check=message_check, timeout=60)
@@ -94,15 +140,16 @@ class MonkeyPart(commands.Cog):
         if not specs:
             return
 
+        # Process part data, send it to the verification system and act accordingly
         part_data = {
             "name": part,
-            "type": part_type,
-            "manufacturer": manufacturer,
+            "type": part_type.content,
+            "manufacturer": manufacturer.content,
             "specs": specs,
+            "sources": sources.content,
             "images": images,
-            "sources": sources,
-            "notes": notes,
-            "contributors": contributors
+            "notes": notes.content,
+            "contributors": str(ctx.author.id)
         }
 
         embed = discord.Embed(title=part,
@@ -115,16 +162,14 @@ class MonkeyPart(commands.Cog):
         for reaction in ("✅", "❌"):
             await verification_message.add_reaction(reaction)
 
-        def reaction_check(reaction, user):
-            return not user.bot and moderator_role in user.roles and reaction.emoji in ("✅", "❌")
-
         reaction, user = await self.bot.wait_for("reaction_add", check=reaction_check, timeout=None)
 
         if reaction.emoji == "✅":
-            await db.add_part(name=part, type=part_type.content, specs=specs)
+            await db.add_part(part_data)
+            # TODO: Let the user know it was accepted
         elif reaction.emoji == "❌":
-            # TODO: Send part to DB
-            await ctx.send("denied")
+            # TODO: Let the user know the part was denied
+            pass
 
 
 def setup(bot):

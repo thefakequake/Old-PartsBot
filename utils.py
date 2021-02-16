@@ -68,7 +68,8 @@ class Database:
             "specs": part_data.get("specs", {}),
             "images": part_data.get("images", []),
             "sources": part_data.get("sources", []),
-            "notes": part_data.get("notes", [])
+            "notes": part_data.get("notes", []),
+            "contributors": part_data.get("contributors", [])
         }
 
         async with aiosqlite.connect(self.db) as conn:

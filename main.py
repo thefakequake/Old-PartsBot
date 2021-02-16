@@ -118,6 +118,7 @@ async def load(ctx, cog):
                                   timestamp=datetime.utcnow())
         await ctx.send(embed=embed_msg)
 
+
 @bot.command(aliases=['re'])
 async def reload(ctx, cog):
     if ctx.author.id in bot.botadmins:
@@ -153,7 +154,6 @@ async def reload(ctx, cog):
                                   colour=green,
                                   timestamp=datetime.utcnow())
         await ctx.send(embed=embed_msg)
-
 
 
 @bot.command(aliases=['un'])
@@ -192,6 +192,7 @@ async def unload(ctx, cog):
                                   timestamp=datetime.utcnow())
         await ctx.send(embed=embed_msg)
 
+
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandOnCooldown):
@@ -228,7 +229,6 @@ async def on_command_error(ctx, error):
     raise error
 
 
-
 @bot.event
 async def on_guild_join(guild):
     worked = False
@@ -257,4 +257,3 @@ async def on_guild_join(guild):
 
 
 bot.run(data["token"])
-

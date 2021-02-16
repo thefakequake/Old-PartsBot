@@ -56,7 +56,7 @@ class Database:
             raise ValueError("Key images must either be list or None!")
         elif part_data.get("notes") is not None and not isinstance(part_data.get("notes"), list):
             raise ValueError("Key notes must either be list or None!")
-        elif part_data.get("contributors") != None and not isinstance(part_data.get("contributors"), list):
+        elif part_data.get("contributors") is not None and not isinstance(part_data.get("contributors"), list):
             raise ValueError("Key contributors must either be list or None!")
 
         data = {

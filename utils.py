@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-import ast
+import json
 from fuzzywuzzy import process
 import aiosqlite
 
@@ -124,4 +124,4 @@ class Database:
             await conn.commit()
         if part is None:
             return None
-        return part[3]
+        return json.loads(part[3])

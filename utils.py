@@ -33,6 +33,7 @@ class Database:
     def __init__(self, db_name):
         self.db = db_name
 
+
     async def _get_next_sequence_num(self):
         async with aiosqlite.connect(self.db) as conn:
             cursor = await conn.execute("SELECT seq FROM sqlite_sequence WHERE name = ?", ("parts",))
@@ -87,7 +88,7 @@ class Database:
             if dict["name"] != part[1]:
                 await conn.execute("UPDATE parts SET part_name = ? WHERE part_id = ?", (dict["name"], id))
             if dict["type"] != part[2]:
-                await conn.execute("UPDATE parts SET part_type = ? WHERE part_id = ?", (dict["type"], id))
+                await conn.execute("UPDATE parts SET part_type = ? WHERE part_id = ?", (dict["type"].lower(), id))
             if dict["id"] != id:
                 dict["id"] = id
             await conn.execute("UPDATE parts SET part_data = ? WHERE part_id = ?", (str(dict), id))
@@ -98,6 +99,7 @@ class Database:
         async with aiosqlite.connect(self.db) as conn:
             await conn.execute("DELETE FROM parts WHERE part_id = ?", (id,))
             await conn.commit()
+
 
     async def search_parts(self, **kwargs):
         async with aiosqlite.connect(self.db) as conn:

@@ -1,15 +1,14 @@
 import aiosqlite
 import asyncio
 
-async def createbotdb():
 
+async def createbotdb():
     conn = await aiosqlite.connect("bot.db")
 
     cursor = await conn.execute("""CREATE TABLE cases (
                     name text,
                     tier integer
                     )""")
-
 
     await conn.commit()
     await conn.close()
@@ -19,7 +18,6 @@ loop = asyncio.get_event_loop()
 loop.run_until_complete(createbotdb())
 
 print('bot.db database created.')
-
 
 credentials = open("credentials.json", "x")
 credentials.close()
@@ -36,6 +34,4 @@ credentials.write('''{
 credentials.close()
 
 print('credentials.json created - you\'ll have to fill in these credentials yourself.')
-
-
 print('all files formatted and ready - contact QuaKe#9535 on discord if you need extra help')

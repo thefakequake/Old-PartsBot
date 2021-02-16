@@ -2,26 +2,24 @@ import discord
 from discord.ext import commands, tasks
 from datetime import datetime
 
+
 red = discord.Colour(0x1e807c)
-
 status_ids = [405798011172814868, 287256464047865857, 370611001948635157, 399672562788859906]
-
 global last_restarted
 last_restarted = datetime.utcnow()
+
 
 async def log(bot, command, ctx):
     logs = bot.get_channel(769906608318316594)
     embed_msg = discord.Embed(title=f"Command '{command}' used by {str(ctx.message.author)}.", description=f"**Text:**\n{ctx.message.content}\n\n**User ID:**\n{ctx.author.id}\n\n**Full Details:**\n{str(ctx.message)}", colour=red, timestamp=datetime.utcnow())
     await logs.send(embed=embed_msg)
 
-class Bot(commands.Cog):
 
+class Bot(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-
-
-    @commands.command(aliases=['commands'], description='shows usage and description for command. if no command is put, sends all commands in a list.')
+    @commands.command(aliases=["commands"], description="Shows usage and description for command. if no command is put, sends all commands in a list.")
     async def help(self, ctx, commandhelp=None):
         try:
             if commandhelp is None:
@@ -56,9 +54,7 @@ class Bot(commands.Cog):
                                       colour=red)
             await ctx.send(embed=embed_msg)
 
-
-
-    @commands.command(description='sends various bot statistics.')
+    @commands.command(description="Sends various bot statistics.")
     @commands.cooldown(1, 5, commands.BucketType.member)
     async def stats(self, ctx):
         global last_restarted
@@ -76,9 +72,7 @@ class Bot(commands.Cog):
                                   timestamp=datetime.utcnow(), colour=red)
         await ctx.send(embed=embed_msg)
 
-
-
-    @commands.command(description='sends bot information including invite link, official discord and credits.')
+    @commands.command(description="Sends bot information including invite link, official discord and credits.")
     async def info(self, ctx):
         embed_msg = discord.Embed(title="About PartsBot",
                                   description="PartsBot was created by QuaKe#9535.\nPartsBot scrapes [PCPartPicker](https://pcpartpicker.com/) and is programmed in Python with the [discord.py](https://github.com/Rapptz/discord.py) API wrapper.\n\n[Invite Link](https://discord.com/api/oauth2/authorize?client_id=769886576321888256&permissions=0&scope=bot) • [Official Discord Server](https://discord.gg/WM9pHp8) • [Patreon](https://patreon.com/partsbot) • [GitHub](https://github.com/QuaKe8782/PartsBot) • [DBL](https://discordbotlist.com/bots/partsbot) • [top.gg](https://top.gg/bot/769886576321888256)\n\nSpecial thanks to Bogdan, Duck Dude, Zorf, Ozone and John Benber.\nShout out to Grxffiti.",
@@ -86,18 +80,13 @@ class Bot(commands.Cog):
         embed_msg.set_thumbnail(url=self.bot.user.avatar_url_as(format="png", size=1024))
         await ctx.send(embed=embed_msg)
 
-        
-
-
-    @commands.command(aliases=['pong'], description='sends current bot ping in milliseconds.')
+    @commands.command(aliases=["pong"], description="Sends current bot ping in milliseconds.")
     async def ping(self, ctx):
         embed_msg = discord.Embed(title="Ping", description=f"{int(self.bot.latency * 1000)}ms", colour=red,
                                   timestamp=datetime.utcnow())
         await ctx.send(embed=embed_msg)
 
-
-
-    @commands.command(description='changes the bot\'s status.')
+    @commands.command(description="Change the bot's status")
     async def status(self, ctx, *, status_name):
         global status_ids
         await log('status', ctx)
@@ -130,21 +119,22 @@ class Bot(commands.Cog):
                                       colour=red, timestamp=datetime.utcnow())
             await ctx.send(embed=embed_msg)
 
-    @commands.command(description='sends partsbot\'s invite link.')
+    @commands.command(description="Send the bot's invite link.")
     async def invite(self, ctx):
         embed_msg = discord.Embed(title="PartsBot invite link",
-                                  colour=red, timestamp=datetime.utcnow(), url='https://discord.com/api/oauth2/authorize?client_id=769886576321888256&permissions=0&scope=bot')
-        embed_msg.add_field(name='Click the title to get redirected.', value='Use `,info` for additional bot information.')
+                                  colour=red, timestamp=datetime.utcnow(), url="https://discord.com/api/oauth2/authorize?client_id=769886576321888256&permissions=0&scope=bot")
+        embed_msg.add_field(name="Click the title to get redirected.", value="Use `,info` for additional bot information.")
         await ctx.send(embed=embed_msg)
 
-    @commands.command(description='sends partsbot\'s github link.', aliases=['code', 'repo'])
+    @commands.command(description="Sends partsbot's github link.", aliases=["code", "repo"])
     async def github(self, ctx):
         embed_msg = discord.Embed(title="PartsBot Github",
                                   colour=red, timestamp=datetime.utcnow(),
                                   url='https://github.com/QuaKe8782/PartsBot')
-        embed_msg.add_field(name='Click the title to get redirected.',
-                            value='Use `,info` for additional bot information.')
+        embed_msg.add_field(name="Click the title to get redirected.",
+                            value="Use `,info` for additional bot information.")
         await ctx.send(embed=embed_msg)
+
 
 def setup(bot):
     bot.add_cog(Bot(bot))

@@ -13,12 +13,11 @@ red = discord.Colour(0x1e807c)
 
 
 class Builds(commands.Cog):
-
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(aliases=['buildcreate'], description="Creates a build and saves it. You can view your build or another member's build with the ,build command.")
-    async def createbuild(self, ctx, *, list=None):
+    @commands.command(aliases=["buildcreate"], description="Creates a build and saves it. You can view your build or another member's build with the ,build command.")
+    async def createbuild(self, ctx, *, list = None):
 
         async with aiosqlite.connect("bot.db") as conn:
             cursor = await conn.execute("SELECT * from builds WHERE userid IS (?)", (ctx.author.id,))
@@ -35,6 +34,7 @@ class Builds(commands.Cog):
             )
             await ctx.send(embed=embed_msg)
             return
+
         if list is None:
             embed_msg = discord.Embed(
                 title="What would you like the contents of your Build to be?",
@@ -57,9 +57,7 @@ class Builds(commands.Cog):
                 return
             message_content = message.content
 
-
         matches = get_list_links(message_content)
-
         build_content = message_content
         build_url = "None"
         pcpp = Scraper()
@@ -92,10 +90,8 @@ class Builds(commands.Cog):
         await ctx.send(embed=embed_msg)
         return
 
-
-    @commands.command(aliases=['buildupdate', 'buildedit', 'editbuild'], description="Edits your build.")
+    @commands.command(aliases=["buildupdate", "buildedit", "editbuild"], description="Edit your build.")
     async def updatebuild(self, ctx, *, list=None):
-
         async with aiosqlite.connect("bot.db") as conn:
             cursor = await conn.execute("SELECT * from builds WHERE userid IS (?)", (ctx.author.id,))
             info = await cursor.fetchall()
@@ -111,6 +107,7 @@ class Builds(commands.Cog):
             )
             await ctx.send(embed=embed_msg)
             return
+
         if list is None:
             embed_msg = discord.Embed(
                 title="What would you like the contents of your Build to be?",
@@ -120,6 +117,7 @@ class Builds(commands.Cog):
             )
             sent_message = await ctx.message.reply(embed=embed_msg)
             check = lambda message: message.author == ctx.author and message.content != ""
+
             try:
                 message = await self.bot.wait_for('message', check=check, timeout=30)
             except asyncio.TimeoutError:
@@ -131,9 +129,10 @@ class Builds(commands.Cog):
                 )
                 await sent_message.edit(embed=embed_msg)
                 return
-            message_content = message.content
-        matches = get_list_links(message_content)
 
+            message_content = message.content
+
+        matches = get_list_links(message_content)
         build_content = message_content
         build_url = "None"
         pcpp = Scraper()
@@ -166,16 +165,12 @@ class Builds(commands.Cog):
         await ctx.send(embed=embed_msg)
         return
 
-
     @commands.command(description="Sends your or another member's build in chat.")
     async def build(self, ctx, *, member: Member = None):
-
-        user = ctx.author
-        if member != None:
-            user = member
+        member = member if member else ctx.author
 
         async with aiosqlite.connect("bot.db") as conn:
-            cursor = await conn.execute("SELECT * from builds WHERE userid IS (?)", (user.id,))
+            cursor = await conn.execute("SELECT * from builds WHERE userid IS (?)", (member.id,))
             info = await cursor.fetchall()
             await conn.commit()
 
@@ -198,13 +193,13 @@ class Builds(commands.Cog):
             return
 
         build = info[0]
+
         if build[2] == "None":
-            embed_msg = discord.Embed(title=f"{user.name}'s Build", description=build[1], colour=red, timestamp=datetime.utcnow())
+            embed_msg = discord.Embed(title=f"{member.name}'s Build", description=build[1], colour=red, timestamp=datetime.utcnow())
         else:
-            embed_msg = discord.Embed(title=f"{user.name}'s Build", description=build[1], url=build[2], colour=red, timestamp=datetime.utcnow())
+            embed_msg = discord.Embed(title=f"{member.name}'s Build", description=build[1], url=build[2], colour=red, timestamp=datetime.utcnow())
 
         await ctx.send(embed=embed_msg)
-
 
 
 def setup(bot):

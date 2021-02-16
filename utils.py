@@ -93,12 +93,10 @@ class Database:
             await conn.execute("UPDATE parts SET part_data = ? WHERE part_id = ?", (str(dict), id))
             await conn.commit()
 
-
     async def delete_part(self, id):
         async with aiosqlite.connect(self.db) as conn:
             await conn.execute("DELETE FROM parts WHERE part_id = ?", (id,))
             await conn.commit()
-
 
     async def search_parts(self, **kwargs):
         async with aiosqlite.connect(self.db) as conn:
@@ -116,7 +114,6 @@ class Database:
                 pairs.append((string, item[0]))
             await conn.commit()
         return pairs
-
 
     async def fetch_part(self, id):
         async with aiosqlite.connect(self.db) as conn:

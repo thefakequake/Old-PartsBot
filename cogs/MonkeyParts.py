@@ -137,10 +137,10 @@ class MonkeyPart(commands.Cog):
                 await ctx.send(embed=stop_message)
                 break
 
-            if len(spec_values) == 1:
-                specs[spec_name.content] = spec_values.content[0]
-            else:
+            if len(spec_values.content.split(",")) == 1:
                 specs[spec_name.content] = spec_values.content
+            else:
+                specs[spec_name.content] = spec_values.content.split(",")
 
         if not specs:
             return

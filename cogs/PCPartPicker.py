@@ -451,7 +451,7 @@ class PCPartPicker(commands.Cog):
                     break
                 slices.pop(-1)
             description = '\n'.join(slices)
-            embed_msg = discord.Embed(title=f"Showing results for {search_term}:", description=description,
+            embed_msg = discord.Embed(title=f"Showing results for {search_string}:", description=description,
                                       colour=green, timestamp=datetime.utcnow())
             await message.edit(embed=embed_msg)
 

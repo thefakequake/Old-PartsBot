@@ -128,3 +128,10 @@ class Database:
         if part is None:
             return None
         return json.loads(part[3])
+
+    async def add(self, userid, event):
+        if event not in ("ignored", "approved", "declined"):
+            raise ValueError("Invalid event! Must be one of these three: ignored, approved, declined.")
+        async with aiosqlite.connect(self.db) as conn:
+            await conn.execute("INSERT OR IGNORE INTO user_tracking VALUES (?, ?, ?, ?)", (userid, 0, 0, 0))
+            await conn.execute("UPDATE user_tracking SET ? = (? + 1) WHERE user_id = ?", (event, event, userid))

@@ -78,19 +78,19 @@ class Database:
             await conn.commit()
         return item[0]
 
-    async def edit_part(self, id, dict):
+    async def edit_part(self, id, _dict):
         async with aiosqlite.connect(self.db) as conn:
             cursor = await conn.execute("SELECT * FROM parts WHERE part_id = ?", (id,))
             part = await cursor.fetchone()
             if part is None:
                 raise ValueError("Invalid part ID!")
-            if dict["name"] != part[1]:
-                await conn.execute("UPDATE parts SET part_name = ? WHERE part_id = ?", (dict["name"], id))
-            if dict["type"] != part[2]:
-                await conn.execute("UPDATE parts SET part_type = ? WHERE part_id = ?", (dict["type"].lower(), id))
-            if dict["id"] != id:
-                dict["id"] = id
-            await conn.execute("UPDATE parts SET part_data = ? WHERE part_id = ?", (str(dict), id))
+            if _dict["name"] != part[1]:
+                await conn.execute("UPDATE parts SET part_name = ? WHERE part_id = ?", (_dict["name"], id))
+            if _dict["type"] != part[2]:
+                await conn.execute("UPDATE parts SET part_type = ? WHERE part_id = ?", (_dict["type"].lower(), id))
+            if _dict["id"] != id:
+                _dict["id"] = id
+            await conn.execute("UPDATE parts SET part_data = ? WHERE part_id = ?", (str(_dict), id))
             await conn.commit()
 
     async def delete_part(self, id):

@@ -32,11 +32,11 @@ class MonkeyPart(commands.Cog):
     @commands.cooldown(rate=1, per=3, type=commands.BucketType.member)
     @monkeyparts.command(description="Submit specifications for a part.")
     async def submit(self, ctx, *, part):
-        if ctx.author.id == 790374236946432071:
-            return
+        # if ctx.author.id == 790374236946432071:
+        #     return
 
         part_submissions_category = ctx.guild.get_channel(810298926678540329)
-        verification_queue = ctx.guild.get_channel(810298741911060492)
+        verification_queue = ctx.guild.get_channel(811625549062733845)
         moderator_role = ctx.guild.get_role(810130497485275166)
         specs = {}
         part_data = {}
@@ -54,7 +54,7 @@ class MonkeyPart(commands.Cog):
         # Check if there are any duplicates
         for result in results:
             if part.lower() == result[0].lower():
-                # TODO: Ask user if they want to edit it instead
+                # TODO: Ask user if they want to edit it instead (after I make the edit command)
                 duplicate = discord.Embed(description="That part already exists.", colour=green)
                 await ctx.send(embed=duplicate)
                 return
@@ -62,16 +62,16 @@ class MonkeyPart(commands.Cog):
         required_information = {
             "type": ("Required", valid_part_types),
             "manufacturer": ("Required",),
-            "sources": ("Recommended",),
-            "images": ("Optional", "URLs separated by a comma and space: `, `"),
+            "sources": ("Recommended", "Separate each item by a comma: `,`"),
+            "images": ("Optional", "Separate each URL by a comma: `,`"),
             "notes": ("Optional",),
         }
 
         for item, item_info in required_information.items():
-            question = f"Please specify the part {item}:"
+            question = f"Please send the part {item} in chat:"
 
             if len(item_info) > 1 and isinstance(item_info[1], str):
-                question = f"Please specify the part {item} *({item_info[1]})*:"
+                question = f"Please specify the part {item} ({item_info[1]}) in chat:"
 
             item_embed = discord.Embed(description=question, colour=green)
             item_embed.set_footer(text=item_info[0])
@@ -85,7 +85,11 @@ class MonkeyPart(commands.Cog):
                         await ctx.send(embed=stop_message)
                         return
 
-                    await ctx.send(f"The type you entered is invalid. You must pick from: `{', '.join(valid_part_types)}.`")
+                    invalid_part_type = discord.Embed(
+                        description=f"The type you entered is invalid. You must pick from: `{', '.join(valid_part_types)}.`",
+                        colour=green
+                    )
+                    await ctx.send(embed=invalid_part_type)
                     response = await self.bot.wait_for("message", check=message_check, timeout=60)
 
             if "stop" in response.content.lower():
@@ -100,7 +104,7 @@ class MonkeyPart(commands.Cog):
         # Receive the part specs
         while True:
             spec_name_embed = discord.Embed(description="What is the spec called?", colour=green)
-            await ctx.send(mbed=spec_name_embed)
+            await ctx.send(embed=spec_name_embed)
             spec_name = await self.bot.wait_for("message", check=message_check, timeout=60)
 
             if spec_name.content.lower() in [name.lower() for name in specs.keys()]:
@@ -117,7 +121,10 @@ class MonkeyPart(commands.Cog):
                 await ctx.send(embed=stop_message)
                 break
 
-            spec_values_embed = discord.Embed(description=f"What is the value of {spec_name.content}? (Separate each item with a comma and a space: \", \")")
+            spec_values_embed = discord.Embed(
+                description=f"What is the value of {spec_name.content}?\n(Separate each item by a comma: `,`)",
+                colour=green
+            )
             await ctx.send(embed=spec_values_embed)
             spec_values = await self.bot.wait_for("message", check=message_check, timeout=60)
 
@@ -130,7 +137,10 @@ class MonkeyPart(commands.Cog):
                 await ctx.send(embed=stop_message)
                 break
 
-            specs[spec_name.content] = spec_values.content
+            if len(spec_values) == 1:
+                specs[spec_name.content] = spec_values.content[0]
+            else:
+                specs[spec_name.content] = spec_values.content
 
         if not specs:
             return
@@ -140,21 +150,36 @@ class MonkeyPart(commands.Cog):
         part_data["specs"] = specs
 
         if "images" in part_data:
-            part_data["images"] = [part_data["images"].split(", ")]
+            part_data["images"] = part_data["images"].split(",")
         if "sources" in part_data:
-            part_data["sources"] = [part_data["sources"]]
+            part_data["sources"] = part_data["sources"].split(",")
         if "notes" in part_data:
             part_data["notes"] = [part_data["notes"]]
 
         part_data["contributors"] = [ctx.author.id]
 
-        embed = discord.Embed(title=part,
-                              description="\n".join([f"**{s_name}:** {s_value}" for s_name, s_value in specs.items()]),
-                              colour=green)
-        embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
-        embed.set_footer(text=[t for t in valid_part_types if t.lower() == part_data["type"].lower()][0])
+        verification_message_embed = discord.Embed(
+            title=f"Submission: {part}",
+            # description="\n".join([f"**{s_name}:** {s_value}" for s_name, s_value in specs.items()]),
+            colour=green
+        )
 
-        verification_message = await verification_queue.send(embed=embed)
+        for item, value in part_data.items():
+            field_value = value
+
+            if isinstance(value, list):
+                value = [str(item) for item in value]
+                field_value = f"{', '.join(value)}."
+
+            if isinstance(value, dict):
+                field_value = "\n".join([f"**{entry_name}**: {entry_value}" for entry_name, entry_value in value.items()])
+
+            verification_message_embed.add_field(name=item.capitalize(), value=field_value, inline=False)
+
+        verification_message_embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
+        verification_message_embed.set_footer(text=[t for t in valid_part_types if t.lower() == part_data["type"].lower()][0])
+
+        verification_message = await verification_queue.send(embed=verification_message_embed)
         for reaction in ("✅", "❌"):
             await verification_message.add_reaction(reaction)
 
@@ -162,9 +187,19 @@ class MonkeyPart(commands.Cog):
 
         if reaction.emoji == "✅":
             await db.add_part(part_data)
-            # TODO: Let the user know it was accepted
+
+            approved_embed = discord.Embed(
+                description=f"Your submission for the part **{part}** has been approved. Thank you for contributing!",
+                colour=green
+            )
+            await ctx.author.send(embed=approved_embed)
+            # TODO: Track data
         elif reaction.emoji == "❌":
-            # TODO: Let the user know the part was denied
+            denied_embed = discord.Embed(
+                description=f"Your submission for the part **{part}** has been denied.", colour=green
+            )
+            await ctx.author.send(embed=denied_embed)
+            # TODO: Track data
             pass
 
 

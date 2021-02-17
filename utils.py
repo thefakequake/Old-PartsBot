@@ -129,9 +129,18 @@ class Database:
             return None
         return json.loads(part[3])
 
-    async def add(self, userid, event):
+    async def add(self, user_id, event):
         if event not in ("ignored", "approved", "declined"):
             raise ValueError("Invalid event! Must be one of these three: ignored, approved, declined.")
         async with aiosqlite.connect(self.db) as conn:
-            await conn.execute("INSERT OR IGNORE INTO user_tracking VALUES (?, ?, ?, ?)", (userid, 0, 0, 0))
-            await conn.execute("UPDATE user_tracking SET ? = (? + 1) WHERE user_id = ?", (event, event, userid))
+            await conn.execute("INSERT OR IGNORE INTO user_tracking VALUES (?, ?, ?, ?)", (user_id, 0, 0, 0))
+            await conn.execute(f"UPDATE user_tracking SET {event} = {event} + 1 WHERE user_id = ?", (user_id,))
+            await conn.commit()
+
+
+    async def fetch_stats(self, user_id):
+        async with aiosqlite.connect(self.db) as conn:
+            cursor = await conn.execute("SELECT ignored, approved, declined FROM user_tracking WHERE user_id = ?", (user_id,))
+            item = await cursor.fetchone()
+            await conn.commit()
+        return item

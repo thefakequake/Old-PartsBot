@@ -36,9 +36,12 @@ class Utility(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(description='translates text from one language into another.')
+    @commands.command(
+        description='translates text from one language into another.'
+    )
     @commands.cooldown(2, 20, commands.BucketType.member)
-    async def translate(self, ctx, source_lang: str, target_lang: str, *, text: str):
+    async def translate(self, ctx, source_lang: str, target_lang: str, *,
+                        text: str):
         await log(self.bot, 'translate', ctx)
 
         try:
@@ -67,7 +70,10 @@ class Utility(commands.Cog):
             embed_msg.set_footer(text='Powered by Google Translate')
             await ctx.send(embed=embed_msg)
 
-    @commands.command(description='DMs user a list of supported languages for the ,translate command.')
+    @commands.command(
+        description='DMs user a list of supported languages for the '
+                    ',translate command.'
+    )
     async def languages(self, ctx):
         embed_msg = discord.Embed(
             title="Supported Languages",
@@ -82,7 +88,8 @@ class Utility(commands.Cog):
 
     @commands.command(description='converts from one currency to another.')
     @commands.cooldown(2, 20, commands.BucketType.member)
-    async def convert(self, ctx, amount: float, source_cur: str, target_cur: str):
+    async def convert(self, ctx, amount: float, source_cur: str,
+                      target_cur: str):
         await log(self.bot, 'convert', ctx)
 
         source_cur = source_cur.upper()
@@ -117,7 +124,10 @@ class Utility(commands.Cog):
             )
             await ctx.send(embed=embed_msg)
 
-    @commands.command(description='DMs user a list of supported currencies for the ,convert command.')
+    @commands.command(
+        description='DMs user a list of supported currencies for the '
+                    ',convert command.'
+    )
     async def currencies(self, ctx):
         embed_msg = discord.Embed(
             title="Supported Currencies",
@@ -236,7 +246,8 @@ class Utility(commands.Cog):
                 if timeperiod > 119:
                     await asyncio.sleep(timeperiod - 60)
                     await ctx.send(
-                        f"{ctx.message.author.mention}, you have 60 seconds left!"
+                        f"{ctx.message.author.mention}, you have 60 seconds "
+                        "left!"
                     )
                     await asyncio.sleep(60)
                     await ctx.send(

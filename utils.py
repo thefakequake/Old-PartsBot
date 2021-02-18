@@ -60,9 +60,10 @@ class Database:
         elif part_data.get("contributors") != None and not isinstance(part_data.get("contributors"), list):
             raise ValueError("Key contributors must either be list or None!")
 
+
         data = {
             "name": part_data.get("name"),
-            "type": part_data.get("type"),
+            "type": part_data.get("type").lower(),
             "manufacturer": part_data.get("manufacturer"),
             "id": await self._get_next_sequence_num(),
             "specs": part_data.get("specs", {}),

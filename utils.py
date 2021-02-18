@@ -125,7 +125,7 @@ class Database:
         return json.loads(part[3])
 
     async def add(self, user_id, event):
-        if event not in ("ignored", "approved", "declined"):
+        if event.lower() not in ("ignored", "approved", "declined"):
             raise ValueError("Invalid event! Must be one of these three: ignored, approved, declined.")
         async with aiosqlite.connect(self.db) as conn:
             await conn.execute("INSERT OR IGNORE INTO user_tracking VALUES (?, ?, ?, ?)", (user_id, 0, 0, 0))

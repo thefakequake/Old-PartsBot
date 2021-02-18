@@ -28,7 +28,6 @@ class Member(commands.MemberConverter):
         else:
             return get_member(guild, name=argument)
 
-
 class Database:
     def __init__(self, db_name):
         self.db = db_name
@@ -74,7 +73,7 @@ class Database:
         }
 
         async with aiosqlite.connect(self.db) as conn:
-            await conn.execute("INSERT INTO Parts (Name, Type, Data) VALUES (?, ?, ?)", (part_data["name"], part_data["type"].lower(), str(data)))
+            await conn.execute("INSERT INTO Parts (Name, Type, Data) VALUES (?, ?, ?)", (part_data["name"], part_data["type"].lower(), str(data).replace("'", '"')))
             cursor = await conn.execute("SELECT last_insert_rowid()")
             item = await cursor.fetchone()
             await conn.commit()

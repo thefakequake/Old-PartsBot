@@ -29,6 +29,7 @@ class MonkeyPart(commands.Cog):
     async def monkeyparts(self, ctx,):
         pass
 
+    # TODO: Add error handling
     @is_submission_channel()
     @commands.cooldown(rate=1, per=3, type=commands.BucketType.member)
     @monkeyparts.command(description="Submit specifications for a part.")

@@ -55,7 +55,6 @@ class MonkeyPart(commands.Cog):
         # Check if there are any duplicates
         for result in results:
             if part.lower() == result[0].lower():
-                # TODO: Ask user if they want to edit it instead (after I make the edit command)
                 duplicate = discord.Embed(description="That part already exists.", colour=green)
                 await ctx.send(embed=duplicate)
                 return
@@ -220,14 +219,14 @@ class MonkeyPart(commands.Cog):
         for reaction in ("✅", "❌"):
             await verification_message.add_reaction(reaction)
 
-        # TODO: Test statistics tracking for all 3 actions
         try:
-            reaction, user = await self.bot.wait_for("reaction_add", check=reaction_check, timeout=86400)
+            reaction, user = await self.bot.wait_for("reaction_add", check=reaction_check, timeout=1)
         except asyncio.TimeoutError:
             await db.add(ctx.author.id, "ignored")
             ignored_embed = discord.Embed(description=f"Your submission for the part **{part}** has expired.",
                                           colour=green)
-            await ctx.send(embed=ignored_embed)
+            await ctx.author.send(embed=ignored_embed)
+            return
 
         if reaction.emoji == "✅":
             await db.add_part(part_data)

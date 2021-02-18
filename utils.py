@@ -73,7 +73,7 @@ class Database:
         }
 
         async with aiosqlite.connect(self.db) as conn:
-            await conn.execute("INSERT INTO parts (part_name, part_type, part_data) VALUES (?, ?, ?)", (part_data["name"], part_data["type"].lower(), str(data)))
+            await conn.execute("INSERT INTO parts (Name, Type, Data) VALUES (?, ?, ?)", (part_data["name"], part_data["type"].lower(), str(data)))
             cursor = await conn.execute("SELECT last_insert_rowid()")
             item = await cursor.fetchone()
             await conn.commit()
@@ -82,38 +82,38 @@ class Database:
 
     async def edit_part(self, id, dict):
         async with aiosqlite.connect(self.db) as conn:
-            cursor = await conn.execute("SELECT * FROM parts WHERE part_id = ?", (id,))
+            cursor = await conn.execute("SELECT * FROM Parts WHERE Id = ?", (id,))
             part = await cursor.fetchone()
             if part is None:
                 raise ValueError("Invalid part ID!")
             if dict["name"] != part[1]:
-                await conn.execute("UPDATE parts SET part_name = ? WHERE part_id = ?", (dict["name"], id))
+                await conn.execute("UPDATE Parts SET Name = ? WHERE Id = ?", (dict["name"], id))
             if dict["type"] != part[2]:
-                await conn.execute("UPDATE parts SET part_type = ? WHERE part_id = ?", (dict["type"].lower(), id))
+                await conn.execute("UPDATE Parts SET Type = ? WHERE Id = ?", (dict["type"].lower(), id))
             if dict["id"] != id:
                 dict["id"] = id
-            await conn.execute("UPDATE parts SET part_data = ? WHERE part_id = ?", (str(dict), id))
+            await conn.execute("UPDATE Parts SET Data = ? WHERE Id = ?", (str(dict), id))
             await conn.commit()
 
 
     async def delete_part(self, id):
         async with aiosqlite.connect(self.db) as conn:
-            await conn.execute("DELETE FROM parts WHERE part_id = ?", (id,))
+            await conn.execute("DELETE FROM Parts WHERE Id = ?", (id,))
             await conn.commit()
 
 
     async def search_parts(self, **kwargs):
         async with aiosqlite.connect(self.db) as conn:
             if kwargs.get("type") is None:
-                cursor = await conn.execute("SELECT part_name FROM parts")
+                cursor = await conn.execute("SELECT Name FROM Parts")
             else:
-                cursor = await conn.execute("SELECT part_name FROM parts WHERE part_type = ?", (kwargs.get("type").lower(),))
+                cursor = await conn.execute("SELECT Name FROM Parts WHERE Type = ?", (kwargs.get("type").lower(),))
             part_names = [item[0] for item in await cursor.fetchall()]
             fuzzy_ratios = process.extract(kwargs.get("name"), part_names)
             strings = [ratio[0] for ratio in fuzzy_ratios[:20] if ratio[1] >= 60]
             pairs = []
             for string in strings:
-                cursor = await conn.execute("SELECT part_id FROM parts WHERE part_name = ?", (string,))
+                cursor = await conn.execute("SELECT Id FROM Parts WHERE Name = ?", (string,))
                 item = await cursor.fetchone()
                 pairs.append((string, item[0]))
             await conn.commit()

@@ -65,7 +65,7 @@ class MonkeyPart(commands.Cog):
             "manufacturer": ("Required",),
             "sources": ("Recommended", "Separate each item by a comma: `,`"),
             "images": ("Optional", "Separate each URL by a comma: `,`"),
-            "notes": ("Optional",),
+            "notes": ("Optional", "Separate each item by a comma: `,`"),
         }
 
         for item, item_info in required_information.items():
@@ -115,11 +115,29 @@ class MonkeyPart(commands.Cog):
 
             if "stop" in spec_name.content.lower():
                 if specs:
+                    formatted_data = "\n".join([f"**{item_name.capitalize()}**: {item_value}" for item_name, item_value in part_data.items()])
                     formatted_specs = "\n".join([f"**{s_name}:** {s_value}" for s_name, s_value in specs.items()])
-                    stop_message = discord.Embed(title="Finished spec sheet", description=formatted_specs, colour=green)
-                    stop_message.set_footer(text="Your part has been submitted.")
+
+                    stop_message = discord.Embed(
+                        title="Submitted part data",
+                        description="If you want to cancel the submission, type \"cancel\" within 10 seconds.",
+                        colour=green)
+                    stop_message.add_field(name="Data", value=formatted_data, inline=False)
+                    stop_message.add_field(name="Specs", value=formatted_specs, inline=False)
+                    stop_message.set_footer(text="Your part will be submitted.")
 
                 await ctx.send(embed=stop_message)
+                try:
+                    cancel_message = await self.bot.wait_for("message", check=message_check, timeout=10)
+
+                    if "cancel" in cancel_message.content.lower():
+                        cancelled_embed = discord.Embed(description="Your submission has been cancelled.", colour=green)
+                        await ctx.send(embed=cancelled_embed)
+
+                        return
+                except asyncio.TimeoutError:
+                    pass
+
                 break
 
             spec_values_embed = discord.Embed(
@@ -131,11 +149,29 @@ class MonkeyPart(commands.Cog):
 
             if "stop" in spec_values.content.lower():
                 if specs:
+                    formatted_data = "\n".join([f"**{item_name.capitalize()}**: {item_value}" for item_name, item_value in part_data.items()])
                     formatted_specs = "\n".join([f"**{s_name}:** {s_value}" for s_name, s_value in specs.items()])
-                    stop_message = discord.Embed(title="Finished spec sheet", description=formatted_specs, colour=green)
-                    stop_message.set_footer(text="Your part has been submitted.")
+
+                    stop_message = discord.Embed(
+                        title="Submitted part data",
+                        description="If you want to cancel the submission, type \"cancel\" within 10 seconds.",
+                        colour=green)
+                    stop_message.add_field(name="Data", value=formatted_data, inline=False)
+                    stop_message.add_field(name="Specs", value=formatted_specs, inline=False)
+                    stop_message.set_footer(text="Your part will be submitted.")
 
                 await ctx.send(embed=stop_message)
+                try:
+                    cancel_message = await self.bot.wait_for("message", check=message_check, timeout=10)
+
+                    if "cancel" in cancel_message.content.lower():
+                        cancelled_embed = discord.Embed(description="Your submission has been cancelled.", colour=green)
+                        await ctx.send(embed=cancelled_embed)
+
+                        return
+                except asyncio.TimeoutError:
+                    pass
+
                 break
 
             if len(spec_values.content.split(",")) == 1:
@@ -155,7 +191,7 @@ class MonkeyPart(commands.Cog):
         if "sources" in part_data:
             part_data["sources"] = part_data["sources"].split(",")
         if "notes" in part_data:
-            part_data["notes"] = [part_data["notes"]]
+            part_data["notes"] = part_data["notes"].split(",")
 
         part_data["contributors"] = [ctx.author.id]
 
@@ -203,11 +239,11 @@ class MonkeyPart(commands.Cog):
             await ctx.author.send(embed=approved_embed)
             await db.add(ctx.author.id, "approved")
         elif reaction.emoji == "❌":
-            denied_embed = discord.Embed(
-                description=f"Your submission for the part **{part}** has been denied.", colour=green
+            declined_embed = discord.Embed(
+                description=f"Your submission for the part **{part}** has been declined.", colour=green
             )
-            await ctx.author.send(embed=denied_embed)
-            await db.add(ctx.author.id, "denied")
+            await ctx.author.send(embed=declined_embed)
+            await db.add(ctx.author.id, "declined")
 
 
 def setup(bot):

@@ -36,7 +36,7 @@ class Database:
 
     async def _get_next_sequence_num(self):
         async with aiosqlite.connect(self.db) as conn:
-            cursor = await conn.execute("SELECT seq FROM sqlite_sequence WHERE name = ?", ("parts",))
+            cursor = await conn.execute("SELECT seq FROM sqlite_sequence WHERE name = ?", ("Parts",))
             num = await cursor.fetchone()
             await conn.commit()
         return int(num[0]) + 1
@@ -73,7 +73,7 @@ class Database:
         }
 
         async with aiosqlite.connect(self.db) as conn:
-            await conn.execute("INSERT INTO parts (Name, Type, Data) VALUES (?, ?, ?)", (part_data["name"], part_data["type"].lower(), str(data)))
+            await conn.execute("INSERT INTO Parts (Name, Type, Data) VALUES (?, ?, ?)", (part_data["name"], part_data["type"].lower(), str(data)))
             cursor = await conn.execute("SELECT last_insert_rowid()")
             item = await cursor.fetchone()
             await conn.commit()
@@ -122,7 +122,7 @@ class Database:
 
     async def fetch_part(self, id):
         async with aiosqlite.connect(self.db) as conn:
-            cursor = await conn.execute("SELECT * FROM parts WHERE part_id = ?", (id,))
+            cursor = await conn.execute("SELECT * FROM Parts WHERE Id = ?", (id,))
             part = await cursor.fetchone()
             await conn.commit()
         if part is None:

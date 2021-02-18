@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 import utils
+import asyncio
 
 green = discord.Colour(0x1e807c)
 valid_part_types = (
@@ -21,7 +22,7 @@ class MonkeyPart(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # TODO: Track user statistics
+    # git coTODO: Track user statistics
 
     @commands.group(description="MonkeyParts related commands.", aliases=["mp"], invoke_without_command=True,
                     case_insensitive=True)
@@ -183,7 +184,14 @@ class MonkeyPart(commands.Cog):
         for reaction in ("✅", "❌"):
             await verification_message.add_reaction(reaction)
 
-        reaction, user = await self.bot.wait_for("reaction_add", check=reaction_check, timeout=86400)
+        # TODO: Test statistics tracking for all 3 actions
+        try:
+            reaction, user = await self.bot.wait_for("reaction_add", check=reaction_check, timeout=86400)
+        except asyncio.TimeoutError:
+            await db.add(ctx.author.id, "ignored")
+            ignored_embed = discord.Embed(description=f"Your submission for the part **{part}** has expired.",
+                                          colour=green)
+            await ctx.send(embed=ignored_embed)
 
         if reaction.emoji == "✅":
             await db.add_part(part_data)
@@ -193,14 +201,13 @@ class MonkeyPart(commands.Cog):
                 colour=green
             )
             await ctx.author.send(embed=approved_embed)
-            # TODO: Track data
+            await db.add(ctx.author.id, "approved")
         elif reaction.emoji == "❌":
             denied_embed = discord.Embed(
                 description=f"Your submission for the part **{part}** has been denied.", colour=green
             )
             await ctx.author.send(embed=denied_embed)
-            # TODO: Track data
-            pass
+            await db.add(ctx.author.id, "denied")
 
 
 def setup(bot):

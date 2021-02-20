@@ -8,4 +8,4 @@ praw
 DiscordUtils
 pypartpicker
 fuzzywuzzy
-profanity-check
+profanity-filter

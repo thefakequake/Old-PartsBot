@@ -3,6 +3,11 @@ from discord.ext import commands
 import json
 from fuzzywuzzy import process
 import aiosqlite
+import string
+import random
+
+
+all_chars = string.ascii_letters + string.digits
 
 def get_member(guild, **attrs):
     name = attrs["name"]
@@ -33,12 +38,49 @@ class Database:
         self.db = db_name
 
 
-    async def _get_next_sequence_num(self):
+    async def _generate_id(self, len):
         async with aiosqlite.connect(self.db) as conn:
-            cursor = await conn.execute("SELECT seq FROM sqlite_sequence WHERE name = ?", ("Parts",))
-            num = await cursor.fetchone()
+            while True:
+                id = ''.join([random.choice(all_chars) for i in range(len)])
+                cursor = await conn.execute("SELECT (Id) from Parts WHERE Id = ?", (id,))
+                if not await cursor.fetchone():
+                    break
             await conn.commit()
-        return int(num[0]) + 1
+        return id
+
+
+    def _quotify(self, string):
+        return string.replace('"', r'\"')
+
+
+    def _convert_dict(self, dictionary):
+        new_dict = {}
+        for key, value in dictionary.items():
+            new_key = self._quotify(key)
+            if isinstance(value, list):
+                new_dict[new_key] = [self._quotify(item) for item in value]
+            elif isinstance(value, dict):
+                new_dict[new_key] = {self._quotify(k): self._quotify(v) for k, v in value.items()}
+            elif isinstance(value, str):
+                new_dict[new_key] = self._quotify(value)
+            else:
+                new_dict[new_key] = value
+        return str(new_dict).replace("'", '"')
+
+
+    async def regenerate_id(self, id):
+        new_id = await self._generate_id(6)
+        async with aiosqlite.connect(self.db) as conn:
+            cursor = await conn.execute("SELECT Data from Parts WHERE Id = ?", (id,))
+            part_data = await cursor.fetchone()
+            if not part_data:
+                return None
+            new_dict = json.loads(part_data[0])
+            new_dict["id"] = new_id
+            await conn.execute("UPDATE Parts SET Id = ?, Data = ? WHERE Id = ?", (new_id, self._convert_dict(new_dict), id))
+            await conn.commit()
+        return new_id
+
 
     async def add_part(self, part_data):
         
@@ -59,12 +101,11 @@ class Database:
         elif part_data.get("contributors") != None and not isinstance(part_data.get("contributors"), list):
             raise ValueError("Key contributors must either be list or None!")
 
-
         data = {
             "name": part_data.get("name"),
             "type": part_data.get("type").lower(),
             "manufacturer": part_data.get("manufacturer"),
-            "id": await self._get_next_sequence_num(),
+            "id": await self._generate_id(5),
             "specs": part_data.get("specs", {}),
             "images": part_data.get("images", []),
             "sources": part_data.get("sources", []),
@@ -73,7 +114,7 @@ class Database:
         }
 
         async with aiosqlite.connect(self.db) as conn:
-            await conn.execute("INSERT INTO Parts (Name, Type, Data) VALUES (?, ?, ?)", (part_data["name"], part_data["type"].lower(), str(data).replace("'", '"')))
+            await conn.execute("INSERT INTO Parts VALUES (?, ?, ?, ?)", (data["id"], data["name"], data["type"].lower(), self._convert_dict(data)))
             cursor = await conn.execute("SELECT last_insert_rowid()")
             item = await cursor.fetchone()
             await conn.commit()
@@ -92,7 +133,7 @@ class Database:
                 await conn.execute("UPDATE Parts SET Type = ? WHERE Id = ?", (dict["type"].lower(), id))
             if dict["id"] != id:
                 dict["id"] = id
-            await conn.execute("UPDATE Parts SET Data = ? WHERE Id = ?", (str(dict), id))
+            await conn.execute("UPDATE Parts SET Data = ? WHERE Id = ?", (self._convert_dict(dict), id))
             await conn.commit()
 
 

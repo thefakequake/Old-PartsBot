@@ -43,10 +43,9 @@ class MonkeyPart(commands.Cog):
             colour=green)
         await ctx.send(embed=info)
 
-    # TODO: Add error handling
-
     # TODO: Make the verification queue resume if the bot restarts (possibly the same to resume one's submission but
     #       it's too much effort for a very minor thing
+
     @is_submission_channel()
     @commands.cooldown(rate=1, per=3, type=commands.BucketType.member)
     @monkeyparts.command(description="Submit specifications for a part.")

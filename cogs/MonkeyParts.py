@@ -64,8 +64,8 @@ class MonkeyPart(commands.Cog):
         def message_check(m):
             return m.channel == ctx.channel and m.author.id == ctx.author.id
 
-        def reaction_check(reaction, user):
-            return not user.bot and moderator_role in user.roles and reaction.emoji in ("✅", "❌")
+        def reaction_check(r, u):
+            return not u.bot and moderator_role in u.roles and r.emoji in ("✅", "❌")
 
         def cancel_message_check(m):
             return m.channel == ctx.channel and m.author.id == ctx.author.id and any(word in m.content for word in ("cancel", "send"))

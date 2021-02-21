@@ -2,8 +2,13 @@ import discord
 from discord.ext import commands
 import utils
 import asyncio
+import re
 
 green = discord.Colour(0x1e807c)
+grey = discord.Colour(0x808080)
+
+image_url_regex = re.compile(r"(http|https)://.+\.(?:png|jpg|jpeg|webp)")
+
 valid_part_types = (
     "CPU", "GPU", "PSU", "Case", "RAM", "Motherboard", "Laptop", "Storage", "Cooler", "Fan", "Paste", "Mouse",
     "Keyboard", "Headphones", "Microphone", "Display", "WiFi")
@@ -22,20 +27,32 @@ class MonkeyPart(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # git coTODO: Track user statistics
-
     @commands.group(description="MonkeyParts related commands.", aliases=["mp"], invoke_without_command=True,
                     case_insensitive=True)
-    async def monkeyparts(self, ctx,):
-        pass
+    @commands.cooldown(rate=1, per=2, type=commands.BucketType.member)
+    async def monkeyparts(self, ctx):
+        info = discord.Embed(
+            title="Keywords",
+            description="`stop` - stop the submitting process. If you have entered at least one specification, it will "
+                        "submit the data.\n"
+                        "`skip` - skip the current question - only works for recommended and optional questions.\n"
+                        "`cancel` - after submitting, you have 60 seconds to say \"cancel\". That will cancel "
+                        "your submission.\n"
+                        "`send` - after submitting, you can say \"send\" to send the submission (it will "
+                        "automatically be sent after 60 seconds).",
+            colour=green)
+        await ctx.send(embed=info)
 
     # TODO: Add error handling
+
+    # TODO: Make the verification queue resume if the bot restarts (possibly the same to resume one's submission but
+    #       it's too much effort for a very minor thing
     @is_submission_channel()
     @commands.cooldown(rate=1, per=3, type=commands.BucketType.member)
     @monkeyparts.command(description="Submit specifications for a part.")
     async def submit(self, ctx, *, part):
-        # if ctx.author.id == 790374236946432071:
-        #     return
+        if ctx.author.id == 790374236946432071:
+            return
 
         part_submissions_category = ctx.guild.get_channel(810298926678540329)
         verification_queue = ctx.guild.get_channel(811625549062733845)
@@ -50,6 +67,9 @@ class MonkeyPart(commands.Cog):
         def reaction_check(reaction, user):
             return not user.bot and moderator_role in user.roles and reaction.emoji in ("✅", "❌")
 
+        def cancel_message_check(m):
+            return m.channel == ctx.channel and m.author.id == ctx.author.id and any(word in m.content for word in ("cancel", "send"))
+
         db = utils.Database("data.db")
         results = await db.search_parts(name=part)
 
@@ -63,27 +83,82 @@ class MonkeyPart(commands.Cog):
         required_information = {
             "type": ("Required", valid_part_types),
             "manufacturer": ("Required",),
-            "sources": ("Recommended", "Separate each item by a comma: `,`"),
-            "images": ("Optional", "Separate each URL by a comma: `,`"),
-            "notes": ("Optional", "Separate each item by a comma: `,`"),
+            "sources": ("Recommended", "separate each item by a comma: `,`"),
+            "images": ("Optional", "separate each URL by a comma: `,`"),
+            "notes": ("Optional", "separate each item by a comma: `,`"),
         }
 
+        # Ask for data about the part
         for item, item_info in required_information.items():
-            question = f"Please send the part {item} in chat:"
+            question = f"Send the part {item} in chat:"
 
             if len(item_info) > 1 and isinstance(item_info[1], str):
-                question = f"Please specify the part {item} ({item_info[1]}) in chat:"
+                question = f"Specify the part {item} ({item_info[1]}) in chat:"
 
-            item_embed = discord.Embed(description=question, colour=green)
-            item_embed.set_footer(text=item_info[0])
-            await ctx.send(embed=item_embed)
+            question_embed = discord.Embed(description=question, colour=green)
+            question_embed.set_footer(text=item_info[0])
+            question_message = await ctx.send(embed=question_embed)
 
             response = await self.bot.wait_for("message", check=message_check, timeout=60)
 
+            # Stop the data input if the user sends "stop"
+            if "stop" in response.content.lower():
+                question_embed.colour = grey
+                await question_message.edit(embed=question_embed)
+                await ctx.send(embed=stop_message)
+
+                return
+
+            # Skip the question if it's optional and the user sends "skip"
+            if item_info[0] in ("Recommended", "Optional") and "skip" in response.content.lower():
+                question_embed.colour = grey
+                await question_message.edit(embed=question_embed)
+
+                continue
+
+            # Check if the user sent an image URL
+            if item == "images":
+                match = re.search(image_url_regex, response.content)
+                skip = False
+
+                while not match and skip is False:
+                    question_embed.colour = grey
+                    await question_message.edit(embed=question_embed)
+
+                    invalid_image_url_embed = discord.Embed(
+                        description="The image URL(s) you entered are invalid. Try again:",
+                        colour=green)
+                    invalid_image_url_message = await ctx.send(embed=invalid_image_url_embed)
+
+                    response = await self.bot.wait_for("message", check=message_check, timeout=60)
+
+                    if "stop" in response.content.lower():
+                        invalid_image_url_embed.colour = grey
+                        await invalid_image_url_message.edit(embed=invalid_image_url_embed)
+
+                        await ctx.send(embed=stop_message)
+                        return
+
+                    if "skip" in response.content.lower():
+                        invalid_image_url_embed.colour = grey
+                        await invalid_image_url_message.edit(embed=invalid_image_url_embed)
+
+                        skip = True
+                        break
+
+                    match = re.search(image_url_regex, response.content)
+
+                    invalid_image_url_embed.colour = grey
+                    await invalid_image_url_message.edit(embed=invalid_image_url_embed)
+
+            # Check if the item is type and if the type is valid
             if len(item_info) > 1 and isinstance(item_info[1], tuple):
                 while not response.content.lower() in valid_part_types_lower:
                     if "stop" in response.content.lower():
+                        question_embed.colour = grey
+                        await question_message.edit(embed=question_embed)
                         await ctx.send(embed=stop_message)
+
                         return
 
                     invalid_part_type = discord.Embed(
@@ -93,92 +168,124 @@ class MonkeyPart(commands.Cog):
                     await ctx.send(embed=invalid_part_type)
                     response = await self.bot.wait_for("message", check=message_check, timeout=60)
 
-            if "stop" in response.content.lower():
-                await ctx.send(embed=stop_message)
-                return
-
-            if item_info[0] in ("Recommended", "Optional") and "skip" in response.content.lower():
-                continue
-
             part_data[item] = response.content
+            question_embed.colour = grey
+            await question_message.edit(embed=question_embed)
 
-        # Receive the part specs
+        # Ask for the part specs
         while True:
             spec_name_embed = discord.Embed(description="What is the spec called?", colour=green)
-            await ctx.send(embed=spec_name_embed)
+            spec_name_message = await ctx.send(embed=spec_name_embed)
             spec_name = await self.bot.wait_for("message", check=message_check, timeout=60)
 
             if spec_name.content.lower() in [name.lower() for name in specs.keys()]:
                 duplicate_spec = discord.Embed(description="That spec already exists!", colour=green)
                 await ctx.send(embed=duplicate_spec)
+
+                spec_name_embed.colour = grey
+                await spec_name_message.edit(embed=spec_name_embed)
+
                 continue
 
             if "stop" in spec_name.content.lower():
+                spec_name_embed.colour = grey
+                await spec_name_message.edit(embed=spec_name_embed)
+
                 if specs:
-                    formatted_data = "\n".join([f"**{item_name.capitalize()}**: {item_value}" for item_name, item_value in part_data.items()])
+                    formatted_data = "\n".join(
+                        [f"**{item_name.capitalize()}**: {item_value}" for item_name, item_value in part_data.items()])
                     formatted_specs = "\n".join([f"**{s_name}:** {s_value}" for s_name, s_value in specs.items()])
 
                     stop_message = discord.Embed(
                         title="Submitted part data",
-                        description="If you want to cancel the submission, type \"cancel\" within 10 seconds.",
+                        description="If you want to cancel the submission, type \"cancel\" within 60 seconds (in 60s "
+                                    "it will automatically be sent."
+                                    "If you want to send the submission, type \"send\".",
                         colour=green)
                     stop_message.add_field(name="Data", value=formatted_data, inline=False)
                     stop_message.add_field(name="Specs", value=formatted_specs, inline=False)
                     stop_message.set_footer(text="Your part will be submitted.")
 
                 await ctx.send(embed=stop_message)
+
+                # Let the user cancel the submission within 60s
                 try:
-                    cancel_message = await self.bot.wait_for("message", check=message_check, timeout=10)
+                    cancel_message = await self.bot.wait_for("message", check=cancel_message_check, timeout=60)
 
                     if "cancel" in cancel_message.content.lower():
                         cancelled_embed = discord.Embed(description="Your submission has been cancelled.", colour=green)
                         await ctx.send(embed=cancelled_embed)
 
                         return
+                    elif "send" in cancel_message.content.lower():
+                        sent_embed = discord.Embed(description="Your submission has been sent.", colour=green)
+                        await ctx.send(embed=sent_embed)
+
                 except asyncio.TimeoutError:
                     pass
 
+                # Break out of the loop asking for specs
                 break
 
+            spec_name_embed.colour = grey
+            await spec_name_message.edit(embed=spec_name_embed)
+
             spec_values_embed = discord.Embed(
-                description=f"What is the value of {spec_name.content}?\n(Separate each item by a comma: `,`)",
+                description=f"What is the value of {spec_name.content}?\n(separate each item by a comma: `,`)",
                 colour=green
             )
-            await ctx.send(embed=spec_values_embed)
+            spec_values_message = await ctx.send(embed=spec_values_embed)
             spec_values = await self.bot.wait_for("message", check=message_check, timeout=60)
 
             if "stop" in spec_values.content.lower():
+                spec_values_embed.colour = grey
+                await spec_values_message.edit(embed=spec_values_embed)
+
                 if specs:
-                    formatted_data = "\n".join([f"**{item_name.capitalize()}**: {item_value}" for item_name, item_value in part_data.items()])
+                    formatted_data = "\n".join(
+                        [f"**{item_name.capitalize()}**: {item_value}" for item_name, item_value in part_data.items()])
                     formatted_specs = "\n".join([f"**{s_name}:** {s_value}" for s_name, s_value in specs.items()])
 
                     stop_message = discord.Embed(
                         title="Submitted part data",
-                        description="If you want to cancel the submission, type \"cancel\" within 10 seconds.",
+                        description="If you want to cancel the submission, type \"cancel\" within 60 seconds (in 60s "
+                                    "it will automatically be sent."
+                                    "If you want to send the submission, type \"send\".",
                         colour=green)
                     stop_message.add_field(name="Data", value=formatted_data, inline=False)
                     stop_message.add_field(name="Specs", value=formatted_specs, inline=False)
                     stop_message.set_footer(text="Your part will be submitted.")
 
                 await ctx.send(embed=stop_message)
+
+                # Let the user cancel the submission within 60s
                 try:
-                    cancel_message = await self.bot.wait_for("message", check=message_check, timeout=10)
+                    cancel_message = await self.bot.wait_for("message", check=cancel_message_check, timeout=60)
 
                     if "cancel" in cancel_message.content.lower():
                         cancelled_embed = discord.Embed(description="Your submission has been cancelled.", colour=green)
                         await ctx.send(embed=cancelled_embed)
 
                         return
+                    elif "send" in cancel_message.content.lower():
+                        sent_embed = discord.Embed(description="Your submission has been sent.", colour=green)
+                        await ctx.send(embed=sent_embed)
                 except asyncio.TimeoutError:
                     pass
 
+                # Break out of the loop asking for specs
                 break
 
+            spec_values_embed.colour = grey
+            await spec_values_message.edit(embed=spec_values_embed)
+
+            # If the spec contains multiple values, it will make it a list, else it won't
             if len(spec_values.content.split(",")) == 1:
                 specs[spec_name.content] = spec_values.content
             else:
                 specs[spec_name.content] = spec_values.content.split(",")
 
+        # If the user didn't add any specs, it won't send the part for verification
         if not specs:
             return
 
@@ -209,19 +316,21 @@ class MonkeyPart(commands.Cog):
                 field_value = f"{', '.join(value)}."
 
             if isinstance(value, dict):
-                field_value = "\n".join([f"**{entry_name}**: {entry_value}" for entry_name, entry_value in value.items()])
+                field_value = "\n".join(
+                    [f"**{entry_name}**: {entry_value}" for entry_name, entry_value in value.items()])
 
             verification_message_embed.add_field(name=item.capitalize(), value=field_value, inline=False)
 
         verification_message_embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
-        verification_message_embed.set_footer(text=[t for t in valid_part_types if t.lower() == part_data["type"].lower()][0])
+        verification_message_embed.set_footer(
+            text=[t for t in valid_part_types if t.lower() == part_data["type"].lower()][0])
 
         verification_message = await verification_queue.send(embed=verification_message_embed)
         for reaction in ("✅", "❌"):
             await verification_message.add_reaction(reaction)
 
         try:
-            reaction, user = await self.bot.wait_for("reaction_add", check=reaction_check, timeout=1)
+            reaction, user = await self.bot.wait_for("reaction_add", check=reaction_check, timeout=86400)
         except asyncio.TimeoutError:
             await db.add(ctx.author.id, "ignored")
             ignored_embed = discord.Embed(description=f"Your submission for the part **{part}** has expired.",

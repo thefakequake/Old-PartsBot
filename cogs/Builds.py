@@ -7,10 +7,10 @@ import re
 import asyncio
 from utils import Member
 from pypartpicker import Scraper, get_list_links
+import DiscordUtils
 
-
+allowed_ids = [405798011172814868, 370611001948635157, 287256464047865857, 454186048721780751, 191280151084924928, 698634807143563424, 411274336847134730, 479319375149662209, 750353117698064497, 629736214345416734, 746775313593270352]
 red = discord.Colour(0x1e807c)
-
 
 class Builds(commands.Cog):
 
@@ -205,7 +205,165 @@ class Builds(commands.Cog):
 
         await ctx.send(embed=embed_msg)
 
+    @commands.command()
+    async def addcase(self, ctx, rank, *, case_name):
+        global allowed_ids
 
+        if ctx.message.author.id in allowed_ids:
+            try:
+                conn = await aiosqlite.connect("bot.db")
+                cursor = await conn.execute("INSERT INTO cases VALUES (?, ?)", (case_name, int(rank)))
+                await conn.commit()
+                await conn.close()
+                ranks = ['High End', 'Midrange', 'Low End', 'Budget']
+                embed_msg = discord.Embed(title=f"Case '{case_name}' saved as a {ranks[int(rank) - 1]}.",
+                                          description="Check the `,cases` command to see the updated cases list.",
+                                          timestamp=datetime.utcnow(), colour=red)
+            except ValueError:
+                embed_msg = discord.Embed(title=f"'{rank}' is not a number between 1 and 4!",
+                                          timestamp=datetime.utcnow(), colour=red)
+            except IndexError:
+                embed_msg = discord.Embed(title=f"'{rank}' is not a number between 1 and 4!",
+                                          timestamp=datetime.utcnow(), colour=red)
+            await ctx.send(embed=embed_msg)
+        else:
+            embed_msg = discord.Embed(title=f"You don't have permission to use that command!", colour=red,
+                                      timestamp=datetime.utcnow())
+            await ctx.send(embed=embed_msg)
+
+
+
+    @commands.command()
+    async def cases(self, ctx, *, tier="None"):
+
+        high_end_aliases = ['highend', 'high end', '1', 'top', 'he', 'best', 'high', 'tier 1', '$$$$', 'high end cases', 'highend cases']
+
+        midrange_aliases = ['midrange', 'mid range', '2', 'tier 2', 'value', '$$$', 'mr', 'mid', 'midrange cases', 'mid range cases']
+
+        low_end_aliases = ['lowend', 'low end', '3', 'tier 3', 'low', '$$', 'le', 'low end cases', 'lowend cases']
+
+        budget_aliases = ['budget', 'cheapest', 'cheap', 'b', '4', '$$', 'budget cases', 'budget cases']
+
+        if tier.lower() in high_end_aliases:
+            tier = 0
+        elif tier.lower() in midrange_aliases:
+            tier = 1
+        elif tier.lower() in low_end_aliases:
+            tier = 2
+        elif tier.lower() in budget_aliases:
+            tier = 3
+
+        async with aiosqlite.connect("bot.db") as conn:
+            cursor = await conn.execute("SELECT * from cases")
+            info = await cursor.fetchall()
+            await conn.commit()
+
+        tiers = ['High End Cases ($$$$)', 'Midrange Cases ($$$)', 'Low End Cases ($$)', 'Budget Cases ($)']
+
+        high_end_cases = ''
+        midrange_cases = ''
+        low_end_cases = ''
+        budget_cases = ''
+
+        if tier == "None":
+
+            embeds = []
+
+            for case in info:
+                if case[1] == 1:
+                    high_end_cases += f'\n{case[0]}'
+                if case[1] == 2:
+                    midrange_cases += f'\n{case[0]}'
+                if case[1] == 3:
+                    low_end_cases += f'\n{case[0]}'
+                if case[1] == 4:
+                    budget_cases += f'\n{case[0]}'
+
+            descs = [high_end_cases, midrange_cases, low_end_cases, budget_cases]
+
+            for i in range(4):
+                embed_msg = discord.Embed(title=tiers[i], description=descs[i], colour=red, timestamp=datetime.utcnow())
+                embed_msg.set_footer(text=f'Tier {i + 1} out of 4')
+                embeds.append(embed_msg)
+
+            paginator = DiscordUtils.Pagination.CustomEmbedPaginator(ctx, timeout=30)
+            paginator.add_reaction('⏪', "back")
+            paginator.add_reaction('⏩', "next")
+            paginator.add_reaction('❌', "delete")
+
+            await paginator.run(embeds)
+            try:
+                await ctx.message.delete()
+            except:
+                pass
+
+        else:
+
+            for case in info:
+                if case[1] == 1:
+                    high_end_cases += f'\n{case[0]}'
+                if case[1] == 2:
+                    midrange_cases += f'\n{case[0]}'
+                if case[1] == 3:
+                    low_end_cases += f'\n{case[0]}'
+                if case[1] == 4:
+                    budget_cases += f'\n{case[0]}'
+
+            descs = [i for i in (high_end_cases, midrange_cases, low_end_cases, budget_cases)]
+
+            embed_msg = discord.Embed(title=tiers[tier], description=descs[tier], colour=red,
+                                      timestamp=datetime.utcnow())
+            message = await ctx.send(embed=embed_msg)
+
+            await message.add_reaction("❌")
+
+            def check(reaction, user):
+                return user == ctx.message.author and str(reaction.emoji) == "❌"
+
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', check=check)
+            except:
+                embed_msg = discord.Embed(title="Timed out", colour=red)
+                await ctx.send(embed=embed_msg)
+                return
+
+            await message.delete()
+
+            try:
+                await ctx.message.delete()
+            except:
+                pass
+
+    @commands.command()
+    async def deletecase(self, ctx, *, case_name):
+        global allowed_ids
+
+        if ctx.message.author.id in allowed_ids:
+            conn = await aiosqlite.connect("bot.db")
+            cursor = await conn.execute("SELECT * from cases")
+            info = await cursor.fetchall()
+            await conn.commit()
+            await conn.close()
+
+            found = False
+
+            for case in info:
+                if case[0] == case_name:
+                    found = True
+            if found is True:
+                conn = await aiosqlite.connect("bot.db")
+                cursor = await conn.execute(f"DELETE FROM cases WHERE name = ?", (case_name,))
+                await conn.commit()
+                await conn.close()
+                embed_msg = discord.Embed(title=f"Deleted case '{case_name}'.", colour=red, timestamp=datetime.utcnow())
+            else:
+                embed_msg = discord.Embed(title=f"Case with name '{case_name}' not found.", colour=red,
+                                          timestamp=datetime.utcnow())
+            await ctx.send(embed=embed_msg)
+        else:
+            embed_msg = discord.Embed(title=f"You don't have permission to use that command!", colour=red,
+                                      timestamp=datetime.utcnow())
+            await ctx.send(embed=embed_msg)
 
 def setup(bot):
     bot.add_cog(Builds(bot))

@@ -43,8 +43,8 @@ class MonkeyPart(commands.Cog):
             colour=green)
         await ctx.send(embed=info)
 
-    # TODO: Make the verification queue resume if the bot restarts (possibly the same to resume one's submission but
-    #       it's too much effort for a very minor thing
+    # TODO: Make the verification queue resume if the bot restarts
+    # TODO: Make the submission process resume if the bot restarts
 
     @is_submission_channel()
     @commands.cooldown(rate=1, per=3, type=commands.BucketType.member)
@@ -328,6 +328,8 @@ class MonkeyPart(commands.Cog):
         for reaction in ("✅", "❌"):
             await verification_message.add_reaction(reaction)
 
+        # Wait for a reaction on the submission in the verification queue
+        # If no reaction is added and it times out, it will just be ignored.
         try:
             reaction, user = await self.bot.wait_for("reaction_add", check=reaction_check, timeout=86400)
         except asyncio.TimeoutError:
@@ -335,6 +337,8 @@ class MonkeyPart(commands.Cog):
             ignored_embed = discord.Embed(description=f"Your submission for the part **{part}** has expired.",
                                           colour=green)
             await ctx.author.send(embed=ignored_embed)
+            verification_message_embed.colour = grey
+            await verification_message.edit(embed=verification_message_embed)
             return
 
         if reaction.emoji == "✅":
@@ -346,12 +350,18 @@ class MonkeyPart(commands.Cog):
             )
             await ctx.author.send(embed=approved_embed)
             await db.add(ctx.author.id, "approved")
+
+            verification_message_embed.colour = grey
+            await verification_message.edit(embed=verification_message_embed)
         elif reaction.emoji == "❌":
             declined_embed = discord.Embed(
                 description=f"Your submission for the part **{part}** has been declined.", colour=green
             )
             await ctx.author.send(embed=declined_embed)
             await db.add(ctx.author.id, "declined")
+
+            verification_message_embed.colour = grey
+            await verification_message.edit(embed=verification_message_embed)
 
 
 def setup(bot):

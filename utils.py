@@ -83,7 +83,6 @@ class Database:
 
 
     async def add_part(self, part_data):
-        
         if part_data.get("name") is None or not isinstance(part_data.get("name"), str):
             raise ValueError("Key name is either missing or not str!")
         elif part_data.get("type") is None or not isinstance(part_data.get("type"), str):

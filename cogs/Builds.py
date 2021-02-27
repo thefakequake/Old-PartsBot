@@ -12,19 +12,22 @@ import DiscordUtils
 allowed_ids = [405798011172814868, 370611001948635157, 287256464047865857, 454186048721780751, 191280151084924928, 698634807143563424, 411274336847134730, 479319375149662209, 750353117698064497, 629736214345416734, 746775313593270352]
 red = discord.Colour(0x1e807c)
 
+
 class Builds(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(aliases=['buildcreate'], description="Creates a build and saves it. You can view your build or another member's build with the ,build command.")
-    async def createbuild(self, ctx, *, list=None):
+    @commands.command(aliases=["buildcreate"],
+                      description="Creates a build and saves it. You can view your build or another member's build with"
+                                  " the ,build command.")
+    async def createbuild(self, ctx, *, _list=None):
 
         async with aiosqlite.connect("bot.db") as conn:
             cursor = await conn.execute("SELECT * from builds WHERE userid IS (?)", (ctx.author.id,))
             info = await cursor.fetchall()
 
-        message_content = list
+        message_content = _list
 
         if len(info) > 0:
             embed_msg = discord.Embed(
@@ -35,7 +38,7 @@ class Builds(commands.Cog):
             )
             await ctx.send(embed=embed_msg)
             return
-        if list is None:
+        if _list is None:
             embed_msg = discord.Embed(
                 title="What would you like the contents of your Build to be?",
                 description="Send your PCPartPicker list link or the raw text for your build's contents.",
@@ -56,7 +59,6 @@ class Builds(commands.Cog):
                 await sent_message.edit(embed=embed_msg)
                 return
             message_content = message.content
-
 
         matches = get_list_links(message_content)
 
@@ -92,15 +94,14 @@ class Builds(commands.Cog):
         await ctx.send(embed=embed_msg)
         return
 
-
-    @commands.command(aliases=['buildupdate', 'buildedit', 'editbuild'], description="Edits your build.")
-    async def updatebuild(self, ctx, *, list=None):
+    @commands.command(aliases=["buildupdate", "buildedit", "editbuild"], description="Edits your build.")
+    async def updatebuild(self, ctx, *, _list=None):
 
         async with aiosqlite.connect("bot.db") as conn:
             cursor = await conn.execute("SELECT * from builds WHERE userid IS (?)", (ctx.author.id,))
             info = await cursor.fetchall()
 
-        message_content = list
+        message_content = _list
 
         if len(info) == 0:
             embed_msg = discord.Embed(
@@ -111,7 +112,7 @@ class Builds(commands.Cog):
             )
             await ctx.send(embed=embed_msg)
             return
-        if list is None:
+        if _list is None:
             embed_msg = discord.Embed(
                 title="What would you like the contents of your Build to be?",
                 description="Send your PCPartPicker list link or the raw text for your build's contents.",
@@ -166,12 +167,11 @@ class Builds(commands.Cog):
         await ctx.send(embed=embed_msg)
         return
 
-
     @commands.command(description="Sends your or another member's build in chat.")
     async def build(self, ctx, *, member: Member = None):
 
         user = ctx.author
-        if member != None:
+        if member is not None:
             user = member
 
         async with aiosqlite.connect("bot.db") as conn:
@@ -230,8 +230,6 @@ class Builds(commands.Cog):
             embed_msg = discord.Embed(title=f"You don't have permission to use that command!", colour=red,
                                       timestamp=datetime.utcnow())
             await ctx.send(embed=embed_msg)
-
-
 
     @commands.command()
     async def cases(self, ctx, *, tier="None"):
@@ -364,6 +362,7 @@ class Builds(commands.Cog):
             embed_msg = discord.Embed(title=f"You don't have permission to use that command!", colour=red,
                                       timestamp=datetime.utcnow())
             await ctx.send(embed=embed_msg)
+
 
 def setup(bot):
     bot.add_cog(Builds(bot))

@@ -33,10 +33,10 @@ class Member(commands.MemberConverter):
         else:
             return get_member(guild, name=argument)
 
+
 class Database:
     def __init__(self, db_name):
         self.db = db_name
-
 
     async def _generate_id(self, len):
         async with aiosqlite.connect(self.db) as conn:
@@ -48,10 +48,8 @@ class Database:
             await conn.commit()
         return id
 
-
     def _quotify(self, string):
         return string.replace('"', r'\"')
-
 
     def _convert_dict(self, dictionary):
         new_dict = {}
@@ -67,7 +65,6 @@ class Database:
                 new_dict[new_key] = value
         return str(new_dict).replace("'", '"')
 
-
     async def regenerate_id(self, id):
         new_id = await self._generate_id(6)
         async with aiosqlite.connect(self.db) as conn:
@@ -81,7 +78,6 @@ class Database:
             await conn.commit()
         return new_id
 
-
     async def add_part(self, part_data):
         if part_data.get("name") is None or not isinstance(part_data.get("name"), str):
             raise ValueError("Key name is either missing or not str!")
@@ -89,15 +85,15 @@ class Database:
             raise ValueError("Key type is either missing or not str!")
         elif part_data.get("manufacturer") is None or not isinstance(part_data.get("manufacturer"), str):
             raise ValueError("Key manufacturer is either missing or str!")
-        elif part_data.get("specs") != None and not isinstance(part_data.get("specs"), dict):
+        elif part_data.get("specs") is not None and not isinstance(part_data.get("specs"), dict):
             raise ValueError("Key specs must either be dict or None!")
-        elif part_data.get("images") != None and not isinstance(part_data.get("images"), list):
+        elif part_data.get("images") is not None and not isinstance(part_data.get("images"), list):
             raise ValueError("Key images must either be list or None!")
-        elif part_data.get("sources") != None and not isinstance(part_data.get("sources"), list):
+        elif part_data.get("sources") is not None and not isinstance(part_data.get("sources"), list):
             raise ValueError("Key sources must either be list or None!")
-        elif part_data.get("notes") != None and not isinstance(part_data.get("notes"), list):
+        elif part_data.get("notes") is not None and not isinstance(part_data.get("notes"), list):
             raise ValueError("Key notes must either be list or None!")
-        elif part_data.get("contributors") != None and not isinstance(part_data.get("contributors"), list):
+        elif part_data.get("contributors") is not None and not isinstance(part_data.get("contributors"), list):
             raise ValueError("Key contributors must either be list or None!")
 
         data = {
@@ -119,7 +115,6 @@ class Database:
             await conn.commit()
         return item[0]
 
-
     async def edit_part(self, id, dict):
         async with aiosqlite.connect(self.db) as conn:
             cursor = await conn.execute("SELECT * FROM Parts WHERE Id = ?", (id,))
@@ -135,12 +130,10 @@ class Database:
             await conn.execute("UPDATE Parts SET Data = ? WHERE Id = ?", (self._convert_dict(dict), id))
             await conn.commit()
 
-
     async def delete_part(self, id):
         async with aiosqlite.connect(self.db) as conn:
             await conn.execute("DELETE FROM Parts WHERE Id = ?", (id,))
             await conn.commit()
-
 
     async def search_parts(self, **kwargs):
         async with aiosqlite.connect(self.db) as conn:

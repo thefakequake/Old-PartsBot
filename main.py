@@ -1,16 +1,15 @@
 import discord
-from discord.ext import commands, tasks
-from discord.ext.commands.cooldowns import BucketType
+from discord.ext import commands
 from datetime import datetime
 import concurrent.futures
 import asyncio
 import random
-from bs4 import BeautifulSoup
-import requests
 import os
 from fuzzywuzzy import process
 import json
 import aiosqlite
+import ast
+import utils
 
 with open("credentials.json") as file:
     data = json.load(file)
@@ -18,8 +17,112 @@ with open("countries.json") as file:
     country_data = json.load(file)
 
 green = discord.Colour(0x1e807c)
+grey = discord.Colour(0x808080)
 error_colour = discord.Colour.from_rgb(254, 0, 0)
 yellow = discord.Colour.from_rgb(254, 254, 0)
+
+
+async def resume_verification_queue():
+    guild = bot.get_guild(809900131494789120)
+    verification_queue = guild.get_channel(811625549062733845)
+    moderator_role = guild.get_role(810130497485275166)
+
+    db = utils.Database("data.db")
+
+    async with aiosqlite.connect("data.db") as conn:
+        cursor = await conn.execute("SELECT * FROM submission_tracking ")
+        submissions = [(submission_id, ast.literal_eval(submission)) for submission_id, submission in await cursor.fetchall()]
+        await conn.commit()
+
+    # Clean up previous messages for the same submission
+    for submission_id, submission in submissions:
+        for message in await verification_queue.history(limit=100).flatten():
+            if message.embeds and message.embeds[0].footer.text and message.embeds[0].footer.text == submission_id:
+                await message.delete()
+
+        author = guild.get_member(int(submission["contributors"][0]))
+
+        verification_message_embed = discord.Embed(
+            title=f"Submission: {submission['name']}",
+            # description="\n".join([f"**{s_name}:** {s_value}" for s_name, s_value in specs.items()]),
+            colour=green
+        )
+
+        for item, value in submission.items():
+            field_value = value
+
+            if isinstance(value, list):
+                value = [str(item) for item in value]
+                field_value = f"{', '.join(value)}."
+
+            if isinstance(value, dict):
+                field_value = "\n".join(
+                    [f"**{entry_name}**: {entry_value}" for entry_name, entry_value in value.items()])
+
+            verification_message_embed.add_field(name=item.capitalize(), value=field_value, inline=False)
+
+        verification_message_embed.set_author(name=author, icon_url=author.avatar_url)
+        verification_message_embed.set_footer(text=submission_id)
+
+        verification_message = await verification_queue.send(embed=verification_message_embed)
+
+        def reaction_check(r, u):
+            return not u.bot and moderator_role in u.roles and r.emoji in ("✅", "❌") and r.message.id == verification_message.id
+
+        for reaction in ("✅", "❌"):
+            await verification_message.add_reaction(reaction)
+
+        # Wait for a reaction on the submission in the verification queue
+        # If no reaction is added and it times out, it will just be ignored.
+        try:
+            reaction, user = await bot.wait_for("reaction_add", check=reaction_check, timeout=86400)
+        except asyncio.TimeoutError:
+            ignored_embed = discord.Embed(description=f"Your submission for the part **{part}** has expired.",
+                                          colour=green)
+            await author.send(embed=ignored_embed)
+            await db.add(author.id, "ignored")
+
+            # Delete submission from database (in case the bot restarted)
+            async with aiosqlite.connect("data.db") as conn:
+                await conn.execute("DELETE FROM submission_tracking WHERE submission_id = ?", (submission_id,))
+                await conn.commit()
+
+            verification_message_embed.colour = grey
+            await verification_message.edit(embed=verification_message_embed)
+            return
+
+        if reaction.emoji == "✅":
+            await db.add_part(submission)
+
+            approved_embed = discord.Embed(
+                description=f"Your submission for the part **{submission['name']}** has been approved. Thank you for contributing!",
+                colour=green
+            )
+            await author.send(embed=approved_embed)
+            await db.add(author.id, "approved")
+
+            # Delete submission from database (in case the bot restarted)
+            async with aiosqlite.connect("data.db") as conn:
+                await conn.execute("DELETE FROM submission_tracking WHERE submission_id = ?", (submission_id,))
+                await conn.commit()
+
+            verification_message_embed.colour = grey
+            await verification_message.edit(embed=verification_message_embed)
+        elif reaction.emoji == "❌":
+            declined_embed = discord.Embed(
+                description=f"Your submission for the part **{submission['name']}** has been declined.", colour=green
+            )
+            await author.send(embed=declined_embed)
+            await db.add(author.id, "declined")
+
+            # Delete submission from database (in case the bot restarted)
+            async with aiosqlite.connect("data.db") as conn:
+                await conn.execute("DELETE FROM submission_tracking WHERE submission_id = ?", (submission_id,))
+                await conn.commit()
+
+            verification_message_embed.colour = grey
+            await verification_message.edit(embed=verification_message_embed)
+
 
 intents = discord.Intents.default()
 intents.members = True
@@ -44,6 +147,7 @@ bot.user_embeds = {}
 bot.queued_lists = []
 bot.rate_limited = False
 
+
 async def unpack_db():
     async with aiosqlite.connect("bot.db") as conn:
         cursor = await conn.execute("SELECT * FROM autopcpp")
@@ -51,12 +155,13 @@ async def unpack_db():
         await conn.commit()
     bot.autopcpp_disabled = [serverid[0] for serverid in data]
 
+
 @bot.event
 async def on_ready():
     bannedcogs = []
     if bot.user.id == 785613577066119229:
         bannedcogs = ['News', 'Poll']
-    print('PartsBot is starting...')
+    print("PartsBot is starting...")
     await unpack_db()
     for filename in os.listdir("cogs"):
         if filename.endswith(".py") and not filename.replace('.py', '') in bannedcogs:
@@ -64,6 +169,9 @@ async def on_ready():
             bot.load_extension(f"cogs.{name}")
             print(f"cogs.{name} loaded")
     print("PartsBot is ready.")
+
+    print("Resuming verification queue...")
+    bot.loop.create_task(resume_verification_queue())
 
     channel = bot.get_channel(769906608318316594)
     embed_msg = discord.Embed(title="Bot restarted.", colour=green, timestamp=datetime.utcnow())
@@ -116,6 +224,7 @@ async def load(ctx, cog):
                                   timestamp=datetime.utcnow())
         await ctx.send(embed=embed_msg)
 
+
 @bot.command(aliases=['re'])
 async def reload(ctx, cog):
     if ctx.author.id in bot.botadmins:
@@ -151,7 +260,6 @@ async def reload(ctx, cog):
                                   colour=green,
                                   timestamp=datetime.utcnow())
         await ctx.send(embed=embed_msg)
-
 
 
 @bot.command(aliases=['un'])
@@ -190,6 +298,7 @@ async def unload(ctx, cog):
                                   timestamp=datetime.utcnow())
         await ctx.send(embed=embed_msg)
 
+
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandOnCooldown):
@@ -226,7 +335,6 @@ async def on_command_error(ctx, error):
     raise error
 
 
-
 @bot.event
 async def on_guild_join(guild):
     worked = False
@@ -255,4 +363,3 @@ async def on_guild_join(guild):
 
 
 bot.run(data["token"])
-

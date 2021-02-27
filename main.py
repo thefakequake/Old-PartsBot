@@ -146,7 +146,7 @@ bot.botadmins = [287256464047865857, 405798011172814868]
 bot.user_embeds = {}
 bot.queued_lists = []
 bot.rate_limited = False
-
+bot.db_path = r"C:\Users\QuaKe\source\repos\MonkeyParts\MonkeyParts\data.db"
 
 async def unpack_db():
     async with aiosqlite.connect("bot.db") as conn:

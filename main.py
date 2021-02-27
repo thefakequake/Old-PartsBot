@@ -160,7 +160,9 @@ async def unpack_db():
 async def on_ready():
     bannedcogs = []
     if bot.user.id == 785613577066119229:
-        bannedcogs = ['News', 'Poll']
+        bannedcogs = ["News", "Poll"]
+    if data["MonkeyParts"] != "true":
+        bannedcogs.append("MonkeyParts")
     print("PartsBot is starting...")
     await unpack_db()
     for filename in os.listdir("cogs"):

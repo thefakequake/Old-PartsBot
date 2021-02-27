@@ -51,7 +51,7 @@ async def resume_verification_queue():
     verification_queue = guild.get_channel(811625549062733845)
     moderator_role = guild.get_role(810130497485275166)
 
-    db = utils.Database("data.db")
+    db = utils.Database(bot.db_path)
 
     async with aiosqlite.connect(bot.db_path) as conn:
         cursor = await conn.execute("SELECT * FROM submission_tracking ")
@@ -149,7 +149,7 @@ async def resume_verification_queue():
 
 
 async def unpack_db():
-    async with aiosqlite.connect(bot.db_path) as conn:
+    async with aiosqlite.connect("bot.db") as conn:
         cursor = await conn.execute("SELECT * FROM autopcpp")
         data = await cursor.fetchall()
         await conn.commit()

@@ -21,6 +21,30 @@ grey = discord.Colour(0x808080)
 error_colour = discord.Colour.from_rgb(254, 0, 0)
 yellow = discord.Colour.from_rgb(254, 254, 0)
 
+intents = discord.Intents.default()
+intents.members = True
+bot = commands.Bot(help_command=None, command_prefix=commands.when_mentioned_or(data["command_prefix"]), intents=intents, case_insensitive=True)
+
+bot.reactions = ["1\N{variation selector-16}\N{combining enclosing keycap}",
+                 "2\N{variation selector-16}\N{combining enclosing keycap}",
+                 "3\N{variation selector-16}\N{combining enclosing keycap}",
+                 "4\N{variation selector-16}\N{combining enclosing keycap}",
+                 "5\N{variation selector-16}\N{combining enclosing keycap}",
+                 "6\N{variation selector-16}\N{combining enclosing keycap}",
+                 "7\N{variation selector-16}\N{combining enclosing keycap}",
+                 "8\N{variation selector-16}\N{combining enclosing keycap}",
+                 "9\N{variation selector-16}\N{combining enclosing keycap}",
+                 "\N{keycap ten}",
+                 "\u274C"]  
+
+bot.countries = country_data
+bot.urls = [f"https://{reg_code}.pcpartpicker.com/list/" for reg_code in [*bot.countries]] + ["https://pcpartpicker.com/list/"]
+bot.botadmins = [287256464047865857, 405798011172814868]
+bot.user_embeds = {}
+bot.queued_lists = []
+bot.rate_limited = False
+bot.db_path = data["parts_db_path"]
+
 
 async def resume_verification_queue():
     guild = bot.get_guild(809900131494789120)
@@ -29,7 +53,7 @@ async def resume_verification_queue():
 
     db = utils.Database("data.db")
 
-    async with aiosqlite.connect("data.db") as conn:
+    async with aiosqlite.connect(bot.db_path) as conn:
         cursor = await conn.execute("SELECT * FROM submission_tracking ")
         submissions = [(submission_id, ast.literal_eval(submission)) for submission_id, submission in await cursor.fetchall()]
         await conn.commit()
@@ -123,30 +147,6 @@ async def resume_verification_queue():
             verification_message_embed.colour = grey
             await verification_message.edit(embed=verification_message_embed)
 
-
-intents = discord.Intents.default()
-intents.members = True
-bot = commands.Bot(help_command=None, command_prefix=commands.when_mentioned_or(data["command_prefix"]), intents=intents, case_insensitive=True)
-
-bot.reactions = ["1\N{variation selector-16}\N{combining enclosing keycap}",
-                 "2\N{variation selector-16}\N{combining enclosing keycap}",
-                 "3\N{variation selector-16}\N{combining enclosing keycap}",
-                 "4\N{variation selector-16}\N{combining enclosing keycap}",
-                 "5\N{variation selector-16}\N{combining enclosing keycap}",
-                 "6\N{variation selector-16}\N{combining enclosing keycap}",
-                 "7\N{variation selector-16}\N{combining enclosing keycap}",
-                 "8\N{variation selector-16}\N{combining enclosing keycap}",
-                 "9\N{variation selector-16}\N{combining enclosing keycap}",
-                 "\N{keycap ten}",
-                 "\u274C"]  
-
-bot.countries = country_data
-bot.urls = [f"https://{reg_code}.pcpartpicker.com/list/" for reg_code in [*bot.countries]] + ["https://pcpartpicker.com/list/"]
-bot.botadmins = [287256464047865857, 405798011172814868]
-bot.user_embeds = {}
-bot.queued_lists = []
-bot.rate_limited = False
-bot.db_path = data["parts_db_path"]
 
 async def unpack_db():
     async with aiosqlite.connect(bot.db_path) as conn:

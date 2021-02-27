@@ -360,10 +360,10 @@ class MonkeyPart(commands.Cog):
             return
 
         if reaction.emoji == "✅":
-            await db.add_part(part_data)
+            part_id = await db.add_part(part_data)
 
             approved_embed = discord.Embed(
-                description=f"Your submission for the part **{part}** has been approved. Thank you for contributing!",
+                description=f"Your submission for the part **{part}** (ID: `{part_id}`) has been approved. Thank you for contributing!",
                 colour=green
             )
             await ctx.author.send(embed=approved_embed)

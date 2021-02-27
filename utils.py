@@ -9,6 +9,7 @@ import random
 
 all_chars = string.ascii_letters + string.digits
 
+
 def get_member(guild, **attrs):
     name = attrs["name"]
 
@@ -33,25 +34,23 @@ class Member(commands.MemberConverter):
         else:
             return get_member(guild, name=argument)
 
+
 class Database:
     def __init__(self, db_name):
         self.db = db_name
 
-
-    async def _generate_id(self, len):
+    async def _generate_id(self, length):
         async with aiosqlite.connect(self.db) as conn:
             while True:
-                id = ''.join([random.choice(all_chars) for i in range(len)])
+                id = ''.join([random.choice(all_chars) for x in range(length)])
                 cursor = await conn.execute("SELECT (Id) from Parts WHERE Id = ?", (id,))
                 if not await cursor.fetchone():
                     break
             await conn.commit()
         return id
 
-
-    def _quotify(self, string):
-        return string.replace('"', r'\"')
-
+    def _quotify(self, _string):
+        return _string.replace('"', r'\"')
 
     def _convert_dict(self, dictionary):
         new_dict = {}
@@ -67,20 +66,18 @@ class Database:
                 new_dict[new_key] = value
         return str(new_dict).replace("'", '"')
 
-
-    async def regenerate_id(self, id):
+    async def regenerate_id(self, _id):
         new_id = await self._generate_id(6)
         async with aiosqlite.connect(self.db) as conn:
-            cursor = await conn.execute("SELECT Data from Parts WHERE Id = ?", (id,))
+            cursor = await conn.execute("SELECT Data from Parts WHERE Id = ?", (_id,))
             part_data = await cursor.fetchone()
             if not part_data:
                 return None
             new_dict = json.loads(part_data[0])
             new_dict["id"] = new_id
-            await conn.execute("UPDATE Parts SET Id = ?, Data = ? WHERE Id = ?", (new_id, self._convert_dict(new_dict), id))
+            await conn.execute("UPDATE Parts SET Id = ?, Data = ? WHERE Id = ?", (new_id, self._convert_dict(new_dict), _id))
             await conn.commit()
         return new_id
-
 
     async def add_part(self, part_data):
         
@@ -90,15 +87,15 @@ class Database:
             raise ValueError("Key type is either missing or not str!")
         elif part_data.get("manufacturer") is None or not isinstance(part_data.get("manufacturer"), str):
             raise ValueError("Key manufacturer is either missing or str!")
-        elif part_data.get("specs") != None and not isinstance(part_data.get("specs"), dict):
+        elif part_data.get("specs") is not None and not isinstance(part_data.get("specs"), dict):
             raise ValueError("Key specs must either be dict or None!")
-        elif part_data.get("images") != None and not isinstance(part_data.get("images"), list):
+        elif part_data.get("images") is not None and not isinstance(part_data.get("images"), list):
             raise ValueError("Key images must either be list or None!")
-        elif part_data.get("sources") != None and not isinstance(part_data.get("sources"), list):
+        elif part_data.get("sources") is not None and not isinstance(part_data.get("sources"), list):
             raise ValueError("Key sources must either be list or None!")
-        elif part_data.get("notes") != None and not isinstance(part_data.get("notes"), list):
+        elif part_data.get("notes") is not None and not isinstance(part_data.get("notes"), list):
             raise ValueError("Key notes must either be list or None!")
-        elif part_data.get("contributors") != None and not isinstance(part_data.get("contributors"), list):
+        elif part_data.get("contributors") is not None and not isinstance(part_data.get("contributors"), list):
             raise ValueError("Key contributors must either be list or None!")
 
         data = {
@@ -120,28 +117,25 @@ class Database:
             await conn.commit()
         return item[0]
 
-
-    async def edit_part(self, id, dict):
+    async def edit_part(self, _id, _dict):
         async with aiosqlite.connect(self.db) as conn:
-            cursor = await conn.execute("SELECT * FROM Parts WHERE Id = ?", (id,))
+            cursor = await conn.execute("SELECT * FROM Parts WHERE Id = ?", (_id,))
             part = await cursor.fetchone()
             if part is None:
                 raise ValueError("Invalid part ID!")
-            if dict["name"] != part[1]:
-                await conn.execute("UPDATE Parts SET Name = ? WHERE Id = ?", (dict["name"], id))
-            if dict["type"] != part[2]:
-                await conn.execute("UPDATE Parts SET Type = ? WHERE Id = ?", (dict["type"].lower(), id))
-            if dict["id"] != id:
-                dict["id"] = id
-            await conn.execute("UPDATE Parts SET Data = ? WHERE Id = ?", (self._convert_dict(dict), id))
+            if _dict["name"] != part[1]:
+                await conn.execute("UPDATE Parts SET Name = ? WHERE Id = ?", (_dict["name"], _id))
+            if _dict["type"] != part[2]:
+                await conn.execute("UPDATE Parts SET Type = ? WHERE Id = ?", (_dict["type"].lower(), _id))
+            if _dict["id"] != _id:
+                _dict["id"] = _id
+            await conn.execute("UPDATE Parts SET Data = ? WHERE Id = ?", (self._convert_dict(_dict), _id))
             await conn.commit()
 
-
-    async def delete_part(self, id):
+    async def delete_part(self, _id):
         async with aiosqlite.connect(self.db) as conn:
-            await conn.execute("DELETE FROM Parts WHERE Id = ?", (id,))
+            await conn.execute("DELETE FROM Parts WHERE Id = ?", (_id,))
             await conn.commit()
-
 
     async def search_parts(self, **kwargs):
         async with aiosqlite.connect(self.db) as conn:
@@ -160,10 +154,9 @@ class Database:
             await conn.commit()
         return pairs
 
-
-    async def fetch_part(self, id):
+    async def fetch_part(self, _id):
         async with aiosqlite.connect(self.db) as conn:
-            cursor = await conn.execute("SELECT * FROM Parts WHERE Id = ?", (id,))
+            cursor = await conn.execute("SELECT * FROM Parts WHERE Id = ?", (_id,))
             part = await cursor.fetchone()
             await conn.commit()
         if part is None:
@@ -177,7 +170,6 @@ class Database:
             await conn.execute("INSERT OR IGNORE INTO user_tracking VALUES (?, ?, ?, ?)", (user_id, 0, 0, 0))
             await conn.execute(f"UPDATE user_tracking SET {event} = {event} + 1 WHERE user_id = ?", (user_id,))
             await conn.commit()
-
 
     async def fetch_stats(self, user_id):
         async with aiosqlite.connect(self.db) as conn:

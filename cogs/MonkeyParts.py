@@ -3,6 +3,9 @@ from discord.ext import commands
 import utils
 import asyncio
 import re
+import aiosqlite
+import random
+import string
 
 green = discord.Colour(0x1e807c)
 grey = discord.Colour(0x808080)
@@ -59,12 +62,10 @@ class MonkeyPart(commands.Cog):
         specs = {}
         part_data = {}
         stop_message = discord.Embed(description="Stopping...", colour=green)
+        chars = string.ascii_letters + string.digits
 
         def message_check(m):
             return m.channel == ctx.channel and m.author.id == ctx.author.id
-
-        def reaction_check(r, u):
-            return not u.bot and moderator_role in u.roles and r.emoji in ("✅", "❌")
 
         def cancel_message_check(m):
             return m.channel == ctx.channel and m.author.id == ctx.author.id and any(word in m.content for word in ("cancel", "send"))
@@ -299,7 +300,7 @@ class MonkeyPart(commands.Cog):
         if "notes" in part_data:
             part_data["notes"] = part_data["notes"].split(",")
 
-        part_data["contributors"] = [ctx.author.id]
+        part_data["contributors"] = [str(ctx.author.id)]
 
         verification_message_embed = discord.Embed(
             title=f"Submission: {part}",
@@ -320,11 +321,22 @@ class MonkeyPart(commands.Cog):
 
             verification_message_embed.add_field(name=item.capitalize(), value=field_value, inline=False)
 
+        # Generate the submission ID
+        submission_id = "".join([random.choice(chars) for x in range(6)])
+
         verification_message_embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
-        verification_message_embed.set_footer(
-            text=[t for t in valid_part_types if t.lower() == part_data["type"].lower()][0])
+        verification_message_embed.set_footer(text=submission_id)
 
         verification_message = await verification_queue.send(embed=verification_message_embed)
+
+        # Add submission to db (in case the bot restarts)
+        async with aiosqlite.connect("data.db") as conn:
+            await conn.execute("INSERT into submission_tracking VALUES (?, ?)", (submission_id, str(part_data)))
+            await conn.commit()
+
+        def reaction_check(r, u):
+            return not u.bot and moderator_role in u.roles and r.emoji in ("✅", "❌") and r.message.id == verification_message.id
+
         for reaction in ("✅", "❌"):
             await verification_message.add_reaction(reaction)
 
@@ -333,10 +345,16 @@ class MonkeyPart(commands.Cog):
         try:
             reaction, user = await self.bot.wait_for("reaction_add", check=reaction_check, timeout=86400)
         except asyncio.TimeoutError:
-            await db.add(ctx.author.id, "ignored")
             ignored_embed = discord.Embed(description=f"Your submission for the part **{part}** has expired.",
                                           colour=green)
             await ctx.author.send(embed=ignored_embed)
+            await db.add(ctx.author.id, "ignored")
+
+            # Delete submission from database (in case the bot restarted)
+            async with aiosqlite.connect("data.db") as conn:
+                await conn.execute("DELETE FROM submission_tracking WHERE submission_id = ?", (submission_id,))
+                await conn.commit()
+
             verification_message_embed.colour = grey
             await verification_message.edit(embed=verification_message_embed)
             return
@@ -351,6 +369,11 @@ class MonkeyPart(commands.Cog):
             await ctx.author.send(embed=approved_embed)
             await db.add(ctx.author.id, "approved")
 
+            # Delete submission from database (in case the bot restarted)
+            async with aiosqlite.connect("data.db") as conn:
+                await conn.execute("DELETE FROM submission_tracking WHERE submission_id = ?", (submission_id,))
+                await conn.commit()
+
             verification_message_embed.colour = grey
             await verification_message.edit(embed=verification_message_embed)
         elif reaction.emoji == "❌":
@@ -359,6 +382,11 @@ class MonkeyPart(commands.Cog):
             )
             await ctx.author.send(embed=declined_embed)
             await db.add(ctx.author.id, "declined")
+
+            # Delete submission from database (in case the bot restarted)
+            async with aiosqlite.connect("data.db") as conn:
+                await conn.execute("DELETE FROM submission_tracking WHERE submission_id = ?", (submission_id,))
+                await conn.commit()
 
             verification_message_embed.colour = grey
             await verification_message.edit(embed=verification_message_embed)

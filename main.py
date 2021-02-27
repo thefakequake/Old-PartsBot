@@ -149,7 +149,7 @@ bot.rate_limited = False
 bot.db_path = data["parts_db_path"]
 
 async def unpack_db():
-    async with aiosqlite.connect("bot.db") as conn:
+    async with aiosqlite.connect(bot.db_path) as conn:
         cursor = await conn.execute("SELECT * FROM autopcpp")
         data = await cursor.fetchall()
         await conn.commit()
@@ -160,21 +160,19 @@ async def unpack_db():
 async def on_ready():
     bannedcogs = []
     if bot.user.id == 785613577066119229:
-        bannedcogs = ["News", "Poll"]
-    if data["MonkeyParts"] != "true":
-        bannedcogs.append("MonkeyParts")
+        bannedcogs = ["News", "Poll", "MonkeyParts"]
+    if data["MonkeyParts"] == "true":
+        bannedcogs.remove("MonkeyParts")
+        print("Resuming verification queue...")
+        await unpack_db()
+        bot.loop.create_task(resume_verification_queue())
     print("PartsBot is starting...")
-    await unpack_db()
     for filename in os.listdir("cogs"):
         if filename.endswith(".py") and not filename.replace('.py', '') in bannedcogs:
             name = filename.replace(".py", "")
             bot.load_extension(f"cogs.{name}")
             print(f"cogs.{name} loaded")
     print("PartsBot is ready.")
-
-    print("Resuming verification queue...")
-    bot.loop.create_task(resume_verification_queue())
-
     channel = bot.get_channel(769906608318316594)
     embed_msg = discord.Embed(title="Bot restarted.", colour=green, timestamp=datetime.utcnow())
     await channel.send(embed=embed_msg)

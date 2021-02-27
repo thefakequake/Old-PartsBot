@@ -70,7 +70,7 @@ class MonkeyPart(commands.Cog):
         def cancel_message_check(m):
             return m.channel == ctx.channel and m.author.id == ctx.author.id and any(word in m.content for word in ("cancel", "send"))
 
-        db = utils.Database("data.db")
+        db = utils.Database(self.bot.db_path)
         results = await db.search_parts(name=part)
 
         # Check if there are any duplicates

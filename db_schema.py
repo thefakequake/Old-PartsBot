@@ -29,7 +29,9 @@ credentials.write('''{
   "username": "reddit username",
   "password": "reddit password",
   "TRN-Api-Key": "apex tracker api key: https://apex.tracker.gg/site-api",
-  "command_prefix": ","
+  "command_prefix": ",",
+  "MonkeyParts": "false",
+  "parts_db_path": ""
 }''')
 credentials.close()
 

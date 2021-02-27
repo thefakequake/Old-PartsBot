@@ -330,7 +330,7 @@ class MonkeyPart(commands.Cog):
         verification_message = await verification_queue.send(embed=verification_message_embed)
 
         # Add submission to db (in case the bot restarts)
-        async with aiosqlite.connect("data.db") as conn:
+        async with aiosqlite.connect(self.bot.db_path) as conn:
             await conn.execute("INSERT into submission_tracking VALUES (?, ?)", (submission_id, str(part_data)))
             await conn.commit()
 
@@ -351,7 +351,7 @@ class MonkeyPart(commands.Cog):
             await db.add(ctx.author.id, "ignored")
 
             # Delete submission from database (in case the bot restarted)
-            async with aiosqlite.connect("data.db") as conn:
+            async with aiosqlite.connect(self.bot.db_path) as conn:
                 await conn.execute("DELETE FROM submission_tracking WHERE submission_id = ?", (submission_id,))
                 await conn.commit()
 
@@ -370,7 +370,7 @@ class MonkeyPart(commands.Cog):
             await db.add(ctx.author.id, "approved")
 
             # Delete submission from database (in case the bot restarted)
-            async with aiosqlite.connect("data.db") as conn:
+            async with aiosqlite.connect(self.bot.db_path) as conn:
                 await conn.execute("DELETE FROM submission_tracking WHERE submission_id = ?", (submission_id,))
                 await conn.commit()
 
@@ -384,7 +384,7 @@ class MonkeyPart(commands.Cog):
             await db.add(ctx.author.id, "declined")
 
             # Delete submission from database (in case the bot restarted)
-            async with aiosqlite.connect("data.db") as conn:
+            async with aiosqlite.connect(self.bot.db_path) as conn:
                 await conn.execute("DELETE FROM submission_tracking WHERE submission_id = ?", (submission_id,))
                 await conn.commit()
 

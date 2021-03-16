@@ -29,5 +29,3 @@ Then, invite your bot to your server and you should be good to go!
 
 ## Credits
 Bogdan for his member converter
-
-CorpNewt for his [URL regex](https://github.com/corpnewt/CorpBot.py/blob/rewrite/Cogs/Server.py#L20).
